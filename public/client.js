@@ -121,7 +121,7 @@ function updateControls(gameState) {
     
     endTurnButton.disabled = !isMyTurn || (gameState.waitingForAction !== 'END_TURN' && gameState.waitingForAction !== 'BUILD_OR_END');
 
-    // Bau-Info anzeigen
+    // Bau-Info anzeigen und Menüs tauschen
     const buildInfo = document.getElementById('build-info');
     if (isMyTurn && gameState.waitingForAction === 'BUILD_OR_END' && field.type === 'PROPERTY') {
         const modalPrice = document.getElementById('modal-price');
@@ -130,12 +130,18 @@ function updateControls(gameState) {
         if (modalPrice) modalPrice.innerText = `Kosten: ${field.housePrice}€`;
         if (modalUpgrade) modalUpgrade.innerText = `Miet-Upgrade: +${field.rent * 2}€/Haus`;
         
+        // Das neue Menü anschalten
         if (buildInfo) buildInfo.style.display = 'flex';
         
-        // NEU: Hauptmenü zwingend ausblenden, damit es keine Klicks klaut!
-        controls.classList.remove('show'); 
+        // DEIN TAUSCH: Das alte Menü knallhart unsichtbar und unklickbar machen
+        controls.classList.remove('show');
+        controls.style.display = 'none'; 
     } else {
+        // Das neue Menü ausschalten
         if (buildInfo) buildInfo.style.display = 'none';
+        
+        // Das alte Menü wieder freigeben (CSS übernimmt dann wieder mit display: grid)
+        controls.style.display = ''; 
     }
 }
 
