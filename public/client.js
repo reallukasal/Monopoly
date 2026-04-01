@@ -148,7 +148,11 @@ function updateControls(gameState) {
         const canAffordHouse = field && field.housePrice && currentPlayer.money >= field.housePrice;
         buildHouseButton.disabled = gameState.waitingForAction !== 'BUILD_OR_END' || !canAffordHouse;
         
-        endTurnButton.disabled = (gameState.waitingForAction !== 'END_TURN' && gameState.waitingForAction !== 'BUILD_OR_END');
+        endTurnButton.disabled = (
+            gameState.waitingForAction !== 'END_TURN' && 
+            gameState.waitingForAction !== 'BUILD_OR_END' && 
+            gameState.waitingForAction !== 'BUY_OR_PASS'
+        );
     }
 }
 

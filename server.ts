@@ -308,9 +308,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('endTurn', () => {
-    if (!gameState.gameStarted || (gameState.waitingForAction !== 'END_TURN' && gameState.waitingForAction !== 'BUILD_OR_END')) return;
+    // Operation: Wir erlauben den endTurn-Befehl jetzt auch, wenn der Status BUY_OR_PASS ist
+    if (!gameState.gameStarted || (
+        gameState.waitingForAction !== 'END_TURN' && 
+        gameState.waitingForAction !== 'BUILD_OR_END' &&
+        gameState.waitingForAction !== 'BUY_OR_PASS'
+    )) return;
+    
     const player = gameState.players[gameState.turn];
     if (player.id !== socket.id) return;
+    
+    // Optional: Log-Eintrag, dass das Grundstück übersprungen wurde
+    if (gameState.waitingForAction === 'BUY_OR_PASS') {
+        io.emit('gameLog', `${player.name} kauft das Grundstück nicht und beendet den Zug.`);
+    }
+    
     nextTurn();
   });
 
