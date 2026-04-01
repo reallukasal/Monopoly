@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monopoly Multiplayer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>Monopoly Multiplayer</h1>
+        <div id="lobby-status">
+            Warte auf Spieler... (0/4)
+        </div>
+        <div id="player-list"></div>
+        <div id="lobby-controls">
+            <button id="fill-ai">Mit KI auffüllen</button>
+            <button id="reset-game" style="background-color: #64748b;">Spiel zurücksetzen</button>
+        </div>
+        <div id="game-board" style="display: none;">
+            <div id="board-container">
+                <!-- Build House Modal (Slanted) -->
+                <div id="build-info" class="action-modal" style="display: none;">
+                    <div class="modal-header">Haus bauen?</div>
+                    <div class="modal-body">
+                        <div class="modal-icon">🏠</div>
+                        <div class="modal-info">
+                            <div id="modal-price" class="price">Kosten: 0€</div>
+                            <div id="modal-upgrade" class="upgrade">Miet-Upgrade: +0€/Haus</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="modal-btn confirm" id="modal-confirm">
+                            <span style="font-size: 1.2rem;">🏠</span> BESTÄTIGEN
+                        </button>
+                        <button class="modal-btn cancel" id="modal-cancel">
+                            ZURÜCK
+                        </button>
+                    </div>
+                </div>
+
+                <div id="board-center">
+                    <div id="player-corners">
+                        <div class="corner corner-tl" id="player-tl"></div>
+                        <div class="corner corner-tr" id="player-tr"></div>
+                        <div class="corner corner-bl" id="player-bl"></div>
+                        <div class="corner corner-br" id="player-br"></div>
+                    </div>
+                    <div id="center-info">
+                        <div id="current-turn">Warte auf Start...</div>
+                        <div id="dice-display">🎲 0, 0</div>
+                    </div>
+                    <div id="controls">
+                        <button id="roll-dice">Würfeln</button>
+                        <button id="buy-property" disabled>Kaufen</button>
+                        <button id="build-house" disabled>Bauen</button>
+                        <button id="end-turn" disabled>Beenden</button>
+                    </div>
+                    <div id="game-log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.io Client Library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Unser Client-Skript -->
+    <script src="client.js"></script>
+</body>
+</html>
