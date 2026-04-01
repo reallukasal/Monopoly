@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monopoly Multiplayer</title>
+    <title>Monopoly</title>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
-        <h1>Monopoly Multiplayer</h1>
+        <h1>Monopoly</h1>
         <div id="lobby-status">
             Warte auf Spieler... (0/4)
         </div>
@@ -32,17 +32,31 @@
                         <div id="dice-display">🎲 0, 0</div>
                     </div>
                     <div id="controls">
-                        <button id="roll-dice">Würfeln</button>
-                        <button id="buy-property" disabled>Kaufen</button>
-                        <button id="build-house" disabled>Bauen</button>
-                        <button id="end-turn" disabled>Beenden</button>
+                        <div id="menu-default" class="menu-view">
+                            <button id="roll-dice">Würfeln</button>
+                            <button id="buy-property" disabled>Kaufen</button>
+                            <button id="build-house" disabled>Bauen</button>
+                            <button id="end-turn" disabled>Beenden</button>
+                        </div>
+
+                        <div id="menu-build" class="menu-view" style="display: none;">
+                            <div class="build-header">🏠 Haus bauen?</div>
+                            <div class="build-stats">
+                                <div id="modal-price" class="price">Kosten: 0€</div>
+                                <div id="modal-upgrade" class="upgrade">Miet-Upgrade: +0€/Haus</div>
+                            </div>
+                            <div class="build-actions">
+                                <button id="modal-confirm" class="confirm">Bauen</button>
+                                <button id="modal-cancel" class="cancel">Zurück</button>
+                            </div>
+                        </div>
                     </div>
                     <div id="game-log"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Build House Modal (Slanted) -->
+        <!-- Build House Modal (Slanted)
         <div id="build-info" class="action-modal" style="display: none;">
             <div class="modal-header">Haus bauen?</div>
             <div class="modal-body">
@@ -60,7 +74,7 @@
                     BEENDEN
                 </button>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <!-- Socket.io Client Library -->

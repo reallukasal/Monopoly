@@ -103,45 +103,52 @@ function updateControls(gameState) {
     const currentPlayer = gameState.players[gameState.turn];
     const isMyTurn = currentPlayer.id === socket.id;
 
-    // Controls nur anzeigen, wenn man dran ist
+    // Die beiden Container anvisieren
+    const menuDefault = document.getElementById('menu-default');
+    const menuBuild = document.getElementById('menu-build');
+
+    // Das äußere Fenster verwalten
     if (isMyTurn && gameState.gameStarted) {
         controls.classList.add('show');
     } else {
         controls.classList.remove('show');
+        return; // Direkt abbrechen, wenn man nicht dran ist
     }
 
-    // Buttons nur aktivieren, wenn man dran ist
     const field = gameState.board[currentPlayer.position];
-    rollDiceButton.disabled = !isMyTurn || gameState.waitingForAction !== 'ROLL_DICE';
-    buyPropertyButton.disabled = !isMyTurn || gameState.waitingForAction !== 'BUY_OR_PASS';
-    
-    // Bauen nur wenn man genug Geld hat
-    const canAffordHouse = field && field.housePrice && currentPlayer.money >= field.housePrice;
-    buildHouseButton.disabled = !isMyTurn || gameState.waitingForAction !== 'BUILD_OR_END' || !canAffordHouse;
-    
-    endTurnButton.disabled = !isMyTurn || (gameState.waitingForAction !== 'END_TURN' && gameState.waitingForAction !== 'BUILD_OR_END');
 
-    // Bau-Info anzeigen und Menüs tauschen
-    const buildInfo = document.getElementById('build-info');
-    if (isMyTurn && gameState.waitingForAction === 'BUILD_OR_END' && field.type === 'PROPERTY') {
+    // STATE 2: Befinden wir uns im Baumodus?
+    if (gameState.waitingForAction === 'BUILD_OR_END' && field.type === 'PROPERTY') {
+        
+        menuDefault.style.display = 'none';
+        menuBuild.style.display = 'flex';
+        
+        // NEU: Das goldene Theme auf die Box anwenden
+        controls.classList.add('golden-theme');
+        
         const modalPrice = document.getElementById('modal-price');
         const modalUpgrade = document.getElementById('modal-upgrade');
         
         if (modalPrice) modalPrice.innerText = `Kosten: ${field.housePrice}€`;
         if (modalUpgrade) modalUpgrade.innerText = `Miet-Upgrade: +${field.rent * 2}€/Haus`;
-        
-        // Das neue Menü anschalten
-        if (buildInfo) buildInfo.style.display = 'flex';
-        
-        // DEIN TAUSCH: Das alte Menü knallhart unsichtbar und unklickbar machen
-        controls.classList.remove('show');
-        controls.style.display = 'none'; 
+
+    // STATE 1: Wir sind in einem normalen Spielzug
     } else {
-        // Das neue Menü ausschalten
-        if (buildInfo) buildInfo.style.display = 'none';
         
-        // Das alte Menü wieder freigeben (CSS übernimmt dann wieder mit display: grid)
-        controls.style.display = ''; 
+        menuBuild.style.display = 'none';
+        menuDefault.style.display = 'grid';
+
+        // NEU: Das goldene Theme wieder entfernen (Box wird wieder blau)
+        controls.classList.remove('golden-theme');
+
+        // ... die normalen Buttons ...
+        rollDiceButton.disabled = gameState.waitingForAction !== 'ROLL_DICE';
+        buyPropertyButton.disabled = gameState.waitingForAction !== 'BUY_OR_PASS';
+        
+        const canAffordHouse = field && field.housePrice && currentPlayer.money >= field.housePrice;
+        buildHouseButton.disabled = gameState.waitingForAction !== 'BUILD_OR_END' || !canAffordHouse;
+        
+        endTurnButton.disabled = (gameState.waitingForAction !== 'END_TURN' && gameState.waitingForAction !== 'BUILD_OR_END');
     }
 }
 
@@ -260,10 +267,39 @@ function renderBoard(gameState) {
             }
         }
 
-        let houseIndicator = '';
+        /*let houseIndicator = '';
         if (field.houses > 0) {
             const icon = field.houses === 3 ? '🏨' : '🏠'.repeat(field.houses);
             houseIndicator = `<div class="house-indicator">${icon}</div>`;
+        }*/
+        let houseIndicator = '';
+        if (field.houses > 0) {
+            // Finde heraus, wem das Feld gehört, um die Farb-Nummer zu ermitteln
+            const ownerIndex = players.findIndex(p => p.id === field.owner);
+            const playerNum = ownerIndex !== -1 ? ownerIndex + 1 : 1;
+
+            houseIndicator = `<div class="build-container">`;
+            
+            // Hotel-Bedingung (Im Standard-Monopoly ab 5 Häusern, passe die Zahl ggf. an deine Backend-Logik an)
+            if (field.houses >= 5) {
+                houseIndicator += `<div class="isometric-hotel hotel-p${playerNum}"></div>`;
+            } else {
+                // Operation: Mathematische Aufteilung in Doppel- und Einzelhäuser
+                const doubleHouses = Math.floor(field.houses / 2); // Gibt an, wie oft die 2 ganz in die Zahl passt
+                const singleHouses = field.houses % 2; // Modulo gibt den Restwert (0 oder 1)
+
+                // 1. Zeichne zuerst die großen Doppelhäuser
+                for (let i = 0; i < doubleHouses; i++) {
+                    houseIndicator += `<div class="isometric-houseDouble houseDouble-p${playerNum}"></div>`;
+                }
+                
+                // 2. Zeichne danach das verbleibende Einzelhaus (falls vorhanden)
+                for (let i = 0; i < singleHouses; i++) {
+                    houseIndicator += `<div class="isometric-house house-p${playerNum}"></div>`;
+                }
+            }
+            
+            houseIndicator += `</div>`;
         }
 
         f.innerHTML = `
