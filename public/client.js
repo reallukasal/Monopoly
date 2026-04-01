@@ -131,6 +131,9 @@ function updateControls(gameState) {
         if (modalUpgrade) modalUpgrade.innerText = `Miet-Upgrade: +${field.rent * 2}€/Haus`;
         
         if (buildInfo) buildInfo.style.display = 'flex';
+        
+        // NEU: Hauptmenü zwingend ausblenden, damit es keine Klicks klaut!
+        controls.classList.remove('show'); 
     } else {
         if (buildInfo) buildInfo.style.display = 'none';
     }

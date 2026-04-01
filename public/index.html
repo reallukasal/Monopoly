@@ -20,26 +20,6 @@
         </div>
         <div id="game-board" style="display: none;">
             <div id="board-container">
-                <!-- Build House Modal (Slanted) -->
-                <div id="build-info" class="action-modal" style="display: none;">
-                    <div class="modal-header">Haus bauen?</div>
-                    <div class="modal-body">
-                        <div class="modal-icon">🏠</div>
-                        <div class="modal-info">
-                            <div id="modal-price" class="price">Kosten: 0€</div>
-                            <div id="modal-upgrade" class="upgrade">Miet-Upgrade: +0€/Haus</div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="modal-btn confirm" id="modal-confirm">
-                            <span style="font-size: 1.2rem;">🏠</span> BESTÄTIGEN
-                        </button>
-                        <button class="modal-btn cancel" id="modal-cancel">
-                            ZURÜCK
-                        </button>
-                    </div>
-                </div>
-
                 <div id="board-center">
                     <div id="player-corners">
                         <div class="corner corner-tl" id="player-tl"></div>
@@ -58,6 +38,25 @@
                         <button id="end-turn" disabled>Beenden</button>
                     </div>
                     <div id="game-log"></div>
+                </div>
+                <!-- Build House Modal (Slanted) -->
+                <div id="build-info" class="action-modal" style="display: none;">
+                    <div class="modal-header">Haus bauen?</div>
+                    <div class="modal-body">
+                        <div class="modal-icon">🏠</div>
+                        <div class="modal-info">
+                            <div id="modal-price" class="price">Kosten: 0€</div>
+                            <div id="modal-upgrade" class="upgrade">Miet-Upgrade: +0€/Haus</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="modal-btn confirm" id="modal-confirm">
+                            <span style="font-size: 1.2rem;">🏠</span> BESTÄTIGEN
+                        </button>
+                        <button class="modal-btn cancel" id="modal-cancel">
+                            ZURÜCK
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
