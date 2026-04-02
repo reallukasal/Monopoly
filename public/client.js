@@ -252,16 +252,16 @@ function renderBoard(gameState) {
             colorBar = `<div class="color-bar" style="background-color: ${field.color}"></div>`;
         }
 
-        let icon = '';
-        if (field.type === 'GO') icon = '🏁';
-        if (field.type === 'JAIL') icon = '🔒';
-        if (field.type === 'FREE_PARKING') icon = '🚗';
-        if (field.type === 'GO_TO_JAIL') icon = '👮';
-        if (field.type === 'STATION') icon = '🚂';
-        if (field.type === 'UTILITY') icon = '💡';
-        if (field.type === 'TAX') icon = '💸';
-        if (field.type === 'CHANCE') icon = '❓';
-        if (field.type === 'COMMUNITY_CHEST') icon = '📦';
+        let iconHTML = '';
+        if (field.type === 'GO') iconHTML = '<div class="custom-icon icon-go"></div>';
+        if (field.type === 'JAIL') iconHTML = '<div class="custom-icon icon-jail"></div>';
+        if (field.type === 'FREE_PARKING') iconHTML = '<div class="custom-icon icon-parking"></div>';
+        if (field.type === 'GO_TO_JAIL') iconHTML = '<div class="custom-icon icon-gotojail"></div>';
+        if (field.type === 'STATION') iconHTML = '<div class="custom-icon icon-station"></div>';
+        if (field.type === 'CHANCE') iconHTML = '<div class="custom-icon icon-chance"></div>';
+        if (field.type === 'COMMUNITY_CHEST') iconHTML = '<div class="custom-icon icon-chest"></div>';
+        if (field.type === 'UTILITY') iconHTML = '<div class="custom-icon icon-utility"></div>'; 
+        if (field.type === 'TAX') iconHTML = '<div class="custom-icon icon-tax"></div>';
 
         let ownerIndicator = '';
         if (field.owner) {
@@ -311,7 +311,7 @@ function renderBoard(gameState) {
                 ${colorBar}
                 ${ownerIndicator}
                 ${houseIndicator}
-                <div class="field-icon" style="font-size: 1.2rem; margin-bottom: 2px;">${icon}</div>
+                ${iconHTML} 
                 <div class="field-name">${field.name}</div>
                 ${field.price > 0 ? `<div class="field-price">${field.price}€</div>` : ''}
             </div>

@@ -153,8 +153,8 @@ button:disabled {
     grid-template-columns: repeat(11, 1fr);
     grid-template-rows: repeat(11, 1fr);
     gap: 2px;
-    width: min(820px, 98vw);
-    height: min(820px, 98vw);
+    width: min(920px, 98vw);
+    height: min(920px, 98vw);
     background-color: #334155;
     border: 12px solid #1e293b;
     box-shadow: 0 70px 150px rgba(0,0,0,0.7);
@@ -196,7 +196,7 @@ button:disabled {
 .field-content {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
     width: 100%;
     height: 100%;
@@ -204,6 +204,7 @@ button:disabled {
     position: relative;
     transform-origin: center;
     padding: 2px;
+    gap: 3px;
 }
 
 .field-icon {
@@ -214,14 +215,16 @@ button:disabled {
 
 .field-name {
     font-weight: 800;
-    line-height: 1;
+    line-height: 1.1;
     max-width: 98%;
     color: #0f172a;
     text-transform: uppercase;
     margin-top: 0;
     font-size: 0.55rem;
     letter-spacing: -0.02em;
-    word-wrap: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: auto
 }
 
 .field-price {
@@ -248,7 +251,7 @@ button:disabled {
 
 /* Adjust layout for fields with color bars */
 .field:has(.color-bar) .field-content {
-    padding-top: 24%;
+    padding-top: 32%;
 }
 
 /* Corner fields */
@@ -721,8 +724,8 @@ button:disabled {
 
 /* Basis-Aussehen für Häuser und Hotels */
 .isometric-house {
-    width: 22px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
@@ -730,8 +733,8 @@ button:disabled {
 }
 
 .isometric-houseDouble {
-    width: 22px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
@@ -739,8 +742,8 @@ button:disabled {
 }
 
 .isometric-hotel {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
@@ -762,6 +765,34 @@ button:disabled {
 .houseDouble-p2 { background-image: url('/assets/DoubleHouse-P2.png'); }
 .houseDouble-p3 { background-image: url('/assets/DoubleHouse-P3.png'); }
 .houseDouble-p4 { background-image: url('/assets/DoubleHouse-P4.png'); }
+
+/* Basis-Aussehen für alle Spezialfeld-Icons */
+.custom-icon {
+    width: 40px;  /* Du kannst diese Größe anpassen, je nachdem wie groß dein Feld ist */
+    height: 40px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    margin: 0 auto; /* Zentriert das Icon horizontal im Feld */
+    margin-bottom: 5px; /* Abstand zum Text darunter */
+    filter: drop-shadow(2px 5px 3px rgba(0,0,0,0.5)); /* Der 3D-Schatten */
+    z-index: 5;
+}
+
+/* Dynamische Zuweisung der Bilder */
+.icon-go { background-image: url('/assets/icon-go.png'); }
+.icon-chance { background-image: url('/assets/icon-chance.png'); }
+.icon-chest { background-image: url('/assets/icon-chest.png'); }
+.icon-jail { background-image: url('/assets/icon-jail.png'); }
+.icon-parking { background-image: url('/assets/icon-parking.png'); }
+.icon-gotojail { background-image: url('/assets/icon-gotojail.png'); }
+.icon-station { background-image: url('/assets/icon-station.png'); }
+.icon-tax { background-image: url('/assets/icon-tax.png'); }
+.icon-utility { background-image: url('/assets/icon-utility.png'); }
+
+
+
+
 
 
 
