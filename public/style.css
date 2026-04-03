@@ -651,7 +651,7 @@ button:disabled {
 #controls {
     display: none;
     background: rgba(15, 23, 42, 0.95);
-    padding: 25px;
+    padding: 25px 25px 35px 25px;
     border-radius: 2.5rem;
     border: 3px solid #fbbf24;
     backdrop-filter: blur(20px);
@@ -660,10 +660,11 @@ button:disabled {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) translateZ(100px);
+    transform: translate(-50%, -50%);
     min-width: 320px;
     max-width: 500px;
     width: 90%;
+    overflow: visible;
 }
 
 #controls.show {
@@ -683,39 +684,101 @@ button:disabled {
 
 /* STATE 2: Das neue Bau-Menü */
 #menu-build {
-    display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 15px;
-    text-align: center;
-    color: white;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 1.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
     width: 100%;
 }
 
 .build-header {
     font-family: 'Anton', sans-serif;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     color: #fbbf24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 .build-stats {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 15px;
-    border-radius: 1.2rem;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px 20px;
+    border-radius: 1rem;
+    width: 100%;
+    justify-content: center;
+}
+
+#build-city-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.build-stats .price {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #4ade80;
+}
+
+.build-stats .upgrade {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+    opacity: 0.8;
 }
 
 .build-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
     gap: 15px;
+    width: 100%;
 }
 
-#menu-build button.confirm { background-color: #4ade80; color: #064e3b; }
-#menu-build button.cancel { background-color: #ef4444; color: white; }
+.build-actions button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 1rem;
+    font-family: 'Anton', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.build-actions .confirm {
+    background: #1e40af;
+    color: white;
+}
+
+.build-actions .confirm:hover:not(:disabled) {
+    background: #1e40af;
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+    filter: brightness(1.1);
+}
+
+.build-actions .cancel {
+    background: #ef4444;
+    color: white;
+}
+
+.build-actions .cancel:hover:not(:disabled) {
+    background: #ef4444;
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+    filter: brightness(1.1);
+}
 
 #controls button {
     font-family: 'Anton', sans-serif;
@@ -731,7 +794,7 @@ button:disabled {
     box-shadow: 0 8px 16px rgba(0,0,0,0.4);
     width: 100%;
     min-height: 60px;
-    display: flexbox;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
@@ -739,7 +802,7 @@ button:disabled {
 #roll-dice { background-color: #fbbf24; color: #0f172a; }
 #buy-property { background-color: #8b5cf6; color: white; }
 #build-house { background-color: #1e40af; color: white; }
-#end-turn { background-color: #ef4444; color: white; }
+#end-turn, #crypto-close-btn { background-color: #ef4444; color: white; }
 
 #controls button:hover:not(:disabled) {
     transform: scale(1.05) translateY(-2px);
@@ -752,27 +815,6 @@ button:disabled {
     opacity: 0.3;
     cursor: not-allowed;
     filter: grayscale(1);
-}
-
-#controls.golden-theme {
-    background: linear-gradient(135deg, #d4af37 0%, #8b6d1b 100%);
-    border: 4px solid #f3e5ab;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.2);
-}
-
-/* Textfarben für den Bau-Modus anpassen (dunkel statt weiß) */
-#controls.golden-theme #menu-build {
-    color: #1a1a1a;
-}
-
-#controls.golden-theme .build-header {
-    color: #2d2408;
-}
-
-#controls.golden-theme .build-stats {
-    background: rgba(255, 255, 255, 0.25);
-    color: #1a1a1a;
-    font-weight: 700;
 }
 
 @keyframes center-glow {
@@ -1143,6 +1185,180 @@ button:disabled {
     opacity: 0.8;
     text-align: center;
     font-weight: 500;
+}
+
+#crypto-market-btn {
+    position: absolute;
+    top: 140px;
+    left: calc(50% + 200px);
+    transform: translateX(-50%);
+    height: 45px;
+    padding: 0 15px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid #fbbf24;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 100;
+    pointer-events: auto;
+    animation: center-glow 4s infinite alternate ease-in-out;
+    color: white;
+}
+
+#crypto-market-btn:hover {
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+    border-color: #fbbf24;
+    filter: brightness(1.2);
+}
+
+#crypto-btn-price {
+    font-weight: 900;
+    font-size: 1rem;
+    margin-left: 10px;
+    color: #fbbf24;
+}
+
+#crypto-market-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+}
+
+.player-coins-small {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-left: 8px;
+    font-weight: 600;
+}
+
+/* Crypto Menu */
+#menu-crypto {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    backdrop-filter: none;
+    width: 100%;
+    box-shadow: none;
+}
+
+.crypto-header {
+    font-family: 'Anton', sans-serif;
+    font-size: 1.6rem;
+    color: #fbbf24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    margin-bottom: 5px;
+}
+
+.crypto-price-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 20px;
+    border-radius: 1rem;
+    width: 100%;
+}
+
+.price-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.price-value {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #fbbf24;
+}
+
+#crypto-chart-container {
+    width: 100%;
+    height: 100px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.crypto-user-info {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+.crypto-trade-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.amount-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.amount-selector input {
+    width: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 8px;
+    border-radius: 0.5rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.amount-selector button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.trade-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.trade-actions button {
+    flex: 1;
+}
+
+.trade-actions .sell {
+    background-color: #64748b;
+}
+
+.trade-actions .sell:hover {
+    background-color: #475569;
+}
+
+#crypto-close-btn {
+    margin-top: 20px;
+    width: 100%;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 100;
+    pointer-events: auto !important;
 }
 
 

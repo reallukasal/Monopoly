@@ -31,7 +31,9 @@ const gameState = {
   wmCityId: null, // ID der Stadt mit WM-Bonus
   lastDrawnCard: null, // { type, id, title, text }
   rentOwed: 0,
-  rentRecipientId: null
+  rentRecipientId: null,
+  vibeCoinPrice: 120,
+  priceHistory: [120]
 };
 
 // Initialisierung des Spielfelds (Beispielhaft für Schritt 1)
@@ -97,6 +99,15 @@ function handleRoll(player) {
   const d2 = Math.floor(Math.random() * 6) + 1;
   gameState.lastRoll = [d1, d2];
   const total = d1 + d2;
+  
+  // Vibe-Coin Preis-Schwankung nach jedem Wurf (-20% bis +30%)
+  const changePercent = (Math.random() * 0.5) - 0.2; // -0.2 bis +0.3
+  const oldPrice = gameState.vibeCoinPrice;
+  gameState.vibeCoinPrice = Math.max(10, Math.floor(gameState.vibeCoinPrice * (1 + changePercent)));
+  gameState.priceHistory.push(gameState.vibeCoinPrice);
+  if (gameState.priceHistory.length > 20) gameState.priceHistory.shift();
+  
+  io.emit('gameLog', `📈 Vibe-Coin Kurs-Update: ${oldPrice}€ ➔ ${gameState.vibeCoinPrice}€ (${(changePercent * 100).toFixed(1)}%)`);
 
   const oldPos = player.position;
   player.position = (player.position + total) % 40;
@@ -416,6 +427,7 @@ function drawChanceCard(player) {
 
   switch(card.id) {
     case 'WM':
+      gameState.lastDrawnCard = null; // Clear card display
       // WM Effekt vom alten Feld entfernen
       if (gameState.wmCityId !== null) {
         gameState.board[gameState.wmCityId].specialEffect = null;
@@ -428,6 +440,7 @@ function drawChanceCard(player) {
       }
       break;
     case 'INFLUENCER':
+      gameState.lastDrawnCard = null; // Clear card display
       const targets = [8, 18, 32]; // Tokyo, Wien, Sydney
       let nextPos = (player.position + 1) % 40;
       while (!targets.includes(nextPos)) {
@@ -441,6 +454,7 @@ function drawChanceCard(player) {
       handleLanding(player, true); // true = Influencer Move (doppelte Miete)
       break;
     case 'GENTRIFICATION':
+      gameState.lastDrawnCard = null; // Clear card display
       if (player.properties.filter(id => gameState.board[id].type === 'PROPERTY' && gameState.board[id].houses < 3).length > 0) {
         gameState.waitingForAction = 'CHOOSE_GENTRIFICATION_CITY';
       } else {
@@ -499,6 +513,7 @@ function drawCommunityChestCard(player) {
       gameState.waitingForAction = 'END_TURN';
       break;
     case 'FLIGHT':
+      gameState.lastDrawnCard = null; // Clear card display
       gameState.waitingForAction = 'CHOOSE_FLIGHT_DESTINATION';
       break;
   }
@@ -546,6 +561,7 @@ io.on('connection', (socket) => {
     name: `Spieler ${gameState.players.length + 1}`,
     position: 0,
     money: 1500,
+    coins: 0,
     properties: [],
     inJail: false
   };
@@ -571,6 +587,7 @@ io.on('connection', (socket) => {
         name: `KI ${gameState.players.length + 1}`,
         position: 0,
         money: 1500,
+        coins: 0,
         properties: [],
         inJail: false,
         isAI: true
@@ -581,6 +598,34 @@ io.on('connection', (socket) => {
     io.emit('gameStateUpdate', gameState);
     io.emit('gameStarted', gameState);
     checkAITurn();
+  });
+
+  socket.on('buyCoins', (amount) => {
+    if (!gameState.gameStarted) return;
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    const cost = amount * gameState.vibeCoinPrice;
+    if (player.money >= cost) {
+      player.money -= cost;
+      player.coins += amount;
+      io.emit('gameLog', `${player.name} kauft ${amount} Vibe-Coins für ${cost}€`);
+      io.emit('gameStateUpdate', gameState);
+    }
+  });
+
+  socket.on('sellCoins', (amount) => {
+    if (!gameState.gameStarted) return;
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    if (player.coins >= amount) {
+      const revenue = amount * gameState.vibeCoinPrice;
+      player.money += revenue;
+      player.coins -= amount;
+      io.emit('gameLog', `${player.name} verkauft ${amount} Vibe-Coins für ${revenue}€`);
+      io.emit('gameStateUpdate', gameState);
+    }
   });
 
   socket.on('rollDice', () => {
@@ -802,6 +847,13 @@ io.on('connection', (socket) => {
     gameState.waitingForAction = 'ROLL_DICE';
     gameState.lastRoll = [0, 0];
     gameState.board = initBoard();
+    gameState.wmCityId = null;
+    gameState.lastDrawnCard = null;
+    gameState.rentOwed = 0;
+    gameState.rentRecipientId = null;
+    gameState.vibeCoinPrice = 120;
+    gameState.priceHistory = [120];
+    
     io.emit('gameStateUpdate', gameState);
     io.emit('gameLog', 'Das Spiel wurde zurückgesetzt.');
     // Alle Clients müssen die Seite neu laden oder UI zurücksetzen

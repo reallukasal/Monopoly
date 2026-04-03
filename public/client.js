@@ -28,6 +28,23 @@ const menuDefault = document.getElementById('menu-default');
 const menuBuild = document.getElementById('menu-build');
 const menuCard = document.getElementById('menu-card');
 const menuBuyout = document.getElementById('menu-buyout');
+const menuCrypto = document.getElementById('menu-crypto');
+const menuDebt = document.getElementById('menu-debt');
+
+const cryptoMarketBtn = document.getElementById('crypto-market-btn');
+const cryptoBtnPrice = document.getElementById('crypto-btn-price');
+const cryptoCurrentPrice = document.getElementById('crypto-current-price');
+const cryptoUserCoins = document.getElementById('crypto-user-coins');
+const cryptoUserCash = document.getElementById('crypto-user-cash');
+const cryptoAmountInput = document.getElementById('crypto-amount-input');
+const cryptoAmountMinus = document.getElementById('crypto-amount-minus');
+const cryptoAmountPlus = document.getElementById('crypto-amount-plus');
+const cryptoBuyBtn = document.getElementById('crypto-buy-btn');
+const cryptoSellBtn = document.getElementById('crypto-sell-btn');
+const cryptoCloseBtn = document.getElementById('crypto-close-btn');
+const cryptoChartCanvas = document.getElementById('crypto-chart');
+
+let cryptoChart = null;
 
 const buyoutCityName = document.getElementById('buyout-city-name');
 const buyoutHouseIcon = document.getElementById('buyout-house-icon');
@@ -87,8 +104,114 @@ rollDiceButton.addEventListener('click', () => {
     socket.emit('rollDice');
 });
 
+cryptoMarketBtn.addEventListener('click', () => {
+    if (menuCrypto.style.display === 'flex') {
+        closeCryptoMarket();
+    } else {
+        openCryptoMarket();
+    }
+});
+
+cryptoCloseBtn.addEventListener('click', () => {
+    closeCryptoMarket();
+});
+
+cryptoAmountMinus.addEventListener('click', () => {
+    let val = parseInt(cryptoAmountInput.value);
+    if (val > 1) cryptoAmountInput.value = val - 1;
+});
+
+cryptoAmountPlus.addEventListener('click', () => {
+    let val = parseInt(cryptoAmountInput.value);
+    const currentPlayer = window.lastGameState.players.find(p => p.id === socket.id);
+    if (!currentPlayer) return;
+    
+    const maxBuy = Math.floor(currentPlayer.money / window.lastGameState.vibeCoinPrice);
+    const maxSell = currentPlayer.coins || 0;
+    const maxAllowed = Math.max(maxBuy, maxSell, 1);
+    
+    if (val < maxAllowed) cryptoAmountInput.value = val + 1;
+});
+
+cryptoBuyBtn.addEventListener('click', () => {
+    const amount = parseInt(cryptoAmountInput.value);
+    if (amount > 0) socket.emit('buyCoins', amount);
+});
+
+cryptoSellBtn.addEventListener('click', () => {
+    const amount = parseInt(cryptoAmountInput.value);
+    if (amount > 0) socket.emit('sellCoins', amount);
+});
+
+function openCryptoMarket() {
+    menuCrypto.style.display = 'flex';
+    updateControls(window.lastGameState);
+    updateCryptoUI();
+}
+
+function closeCryptoMarket() {
+    menuCrypto.style.display = 'none';
+    updateControls(window.lastGameState);
+}
+
+function updateCryptoUI() {
+    if (!window.lastGameState) return;
+    const gs = window.lastGameState;
+    const player = gs.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    const priceText = `${gs.vibeCoinPrice}€`;
+    cryptoCurrentPrice.innerText = priceText;
+    if (cryptoBtnPrice) cryptoBtnPrice.innerText = priceText;
+    
+    cryptoUserCoins.innerText = `Deine Coins: ${player.coins || 0}`;
+    cryptoUserCash.innerText = `Dein Cash: ${player.money}€`;
+    
+    renderCryptoChart(gs.priceHistory);
+}
+
+function renderCryptoChart(history) {
+    const ctx = cryptoChartCanvas.getContext('2d');
+    const width = cryptoChartCanvas.width = cryptoChartCanvas.offsetWidth;
+    const height = cryptoChartCanvas.height = cryptoChartCanvas.offsetHeight;
+    
+    ctx.clearRect(0, 0, width, height);
+    
+    if (history.length < 2) return;
+    
+    const max = Math.max(...history) * 1.1;
+    const min = Math.min(...history) * 0.9;
+    const range = max - min;
+    
+    ctx.beginPath();
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    
+    history.forEach((price, i) => {
+        const x = (i / (history.length - 1)) * width;
+        const y = height - ((price - min) / range) * height;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    
+    // Gradient fill
+    ctx.lineTo(width, height);
+    ctx.lineTo(0, height);
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, 'rgba(251, 191, 36, 0.3)');
+    grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+}
+
 buyPropertyButton.addEventListener('click', () => {
-    socket.emit('buyProperty');
+    if (window.lastGameState && window.lastGameState.waitingForAction === 'BUYOUT_OR_PASS') {
+        socket.emit('buyoutProperty');
+    } else {
+        socket.emit('buyProperty');
+    }
 });
 
 buildHouseButton.addEventListener('click', () => {
@@ -132,6 +255,12 @@ socket.on('reload', () => {
 // Wenn der Server den Game State schickt
 socket.on('gameStateUpdate', (gameState) => {
     console.log('GameState Update erhalten:', gameState);
+    window.lastGameState = gameState;
+    
+    if (menuCrypto && menuCrypto.style.display === 'flex') {
+        updateCryptoUI();
+    }
+    
     updateLobby(gameState);
     if (gameState.gameStarted) {
         updateStatusBar(gameState);
@@ -141,146 +270,157 @@ socket.on('gameStateUpdate', (gameState) => {
 });
 
 function updateControls(gameState) {
+    if (!gameState) return;
+    window.lastGameState = gameState;
     const currentPlayer = gameState.players[gameState.turn];
     const isMyTurn = currentPlayer.id === socket.id;
 
-    // Die beiden Container anvisieren
-    const menuDefault = document.getElementById('menu-default');
-    const menuBuild = document.getElementById('menu-build');
-    const menuCard = document.getElementById('menu-card');
-    const menuBuyout = document.getElementById('menu-buyout');
-    const menuDebt = document.getElementById('menu-debt');
+    if (!menuDefault || !menuBuild || !menuCard || !menuBuyout || !menuDebt || !menuCrypto) return;
 
-    if (!menuDefault || !menuBuild || !menuCard || !menuBuyout || !menuDebt) return;
+    const isCryptoOpen = menuCrypto.style.display === 'flex';
+    const field = gameState.board[currentPlayer.position];
+    const isCardActive = gameState.lastDrawnCard && dismissedCardId !== gameState.lastDrawnCard.id + gameState.turn;
 
-    // Das äußere Fenster verwalten
-    if (isMyTurn && gameState.gameStarted && gameState.waitingForAction !== 'GAME_OVER') {
+    // Sichtbarkeit des Haupt-Containers
+    if ((gameState.gameStarted && gameState.waitingForAction !== 'GAME_OVER' && (isMyTurn || isCardActive)) || isCryptoOpen) {
         controls.classList.add('show');
     } else {
         controls.classList.remove('show');
-        return; // Direkt abbrechen, wenn man nicht dran ist oder Spiel vorbei
+        return;
     }
 
-    const field = gameState.board[currentPlayer.position];
+    // Alle Sub-Menüs verstecken
+    [menuDefault, menuBuild, menuCard, menuBuyout, menuDebt, menuCrypto].forEach(m => {
+        if (m) m.style.display = 'none';
+    });
 
-    // Check if a card is active and not dismissed
-    const isCardActive = gameState.lastDrawnCard && dismissedCardId !== gameState.lastDrawnCard.id + gameState.turn;
+    const menuInfo = document.getElementById('menu-info');
+    if (menuInfo) menuInfo.style.display = 'none';
 
-    if (isCardActive) {
-        menuDefault.style.display = 'none';
-        menuBuild.style.display = 'none';
-        menuBuyout.style.display = 'none';
-        menuDebt.style.display = 'none';
+    // Bestimmen, welches Menü angezeigt wird
+    if (isCryptoOpen) {
+        menuCrypto.style.display = 'flex';
+    } else if (isCardActive && (isMyTurn || currentPlayer.isAI)) {
         menuCard.style.display = 'flex';
-        controls.classList.remove('golden-theme');
-        return; // Early return to keep card menu visible
-    }
-
-    // STATE 3: Abkaufen?
-    if (gameState.waitingForAction === 'BUYOUT_OR_PASS') {
-        menuDefault.style.display = 'none';
-        menuBuild.style.display = 'none';
-        menuCard.style.display = 'none';
-        menuDebt.style.display = 'none';
-        menuBuyout.style.display = 'flex';
-        controls.classList.remove('golden-theme');
-
-        let buyoutMultiplier = 1.5;
-        const sameColorFields = gameState.board.filter(b => b.color === field.color && b.color !== "#ccc");
-        const isMonopoly = sameColorFields.length > 0 && sameColorFields.every(b => b.owner === field.owner);
-        if (field.type === 'PROPERTY' && isMonopoly) {
-            buyoutMultiplier = 1.5 * 1.15;
+        const card = gameState.lastDrawnCard;
+        cardDisplay.className = card.type === 'CHANCE' ? 'chance-card' : 'community-card';
+        cardType.innerText = card.type === 'CHANCE' ? 'EREIGNIS' : 'GEMEINSCHAFT';
+        
+        if (cardImages[card.id]) {
+            cardImage.src = cardImages[card.id];
+            cardImage.style.display = 'block';
+            const imgContainer = document.getElementById('card-image-container');
+            if (imgContainer) {
+                imgContainer.innerHTML = '';
+                imgContainer.appendChild(cardImage);
+            }
+            cardTitle.style.display = 'none';
+            cardText.style.display = 'none';
+            cardType.style.display = 'none';
+            cardDisplay.style.background = 'transparent';
+            cardDisplay.style.border = 'none';
+            cardDisplay.style.boxShadow = 'none';
+        } else {
+            cardImage.style.display = 'none';
+            cardTitle.style.display = 'block';
+            cardText.style.display = 'block';
+            cardType.style.display = 'block';
+            cardTitle.innerText = card.title;
+            cardText.innerText = card.text;
+            cardDisplay.style.background = '#fef3c7';
+            cardDisplay.style.border = '8px solid #fbbf24';
+            cardDisplay.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+            const imgMap = {
+                'WM': '⚽', 'INFLUENCER': '📱', 'GENTRIFICATION': '🏗️', 'BUBBLE': '📉',
+                'CROWDFUNDING': '🚀', 'NEIGHBORHOOD': '🤝', 'SPEEDING': '📸', 'FLIGHT': '✈️'
+            };
+            const imgContainer = document.getElementById('card-image-container');
+            if (imgContainer) imgContainer.innerHTML = `<span style="font-size: 5rem;">${imgMap[card.id] || '❓'}</span>`;
         }
-        const buyoutPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * buyoutMultiplier);
-        buyoutCityName.innerText = field.name;
-        buyoutPriceDisplay.innerText = `Preis: ${buyoutPrice}€`;
-
-        // Haus-Icon anzeigen
-        buyoutHouseIcon.innerHTML = '';
-        if (field.houses > 0) {
-            const ownerIndex = gameState.players.findIndex(p => p.id === field.owner);
-            const playerNum = ownerIndex !== -1 ? ownerIndex + 1 : 1;
-            let iconClass = '';
-            if (field.houses >= 3) iconClass = `hotel-p${playerNum}`;
-            else if (field.houses === 2) iconClass = `houseDouble-p${playerNum}`;
-            else iconClass = `house-p${playerNum}`;
-            
-            const iconDiv = document.createElement('div');
-            const isHotel = field.houses >= 3;
-            const isDouble = field.houses === 2;
-            let baseClass = 'isometric-house';
-            if (isHotel) baseClass = 'isometric-hotel';
-            else if (isDouble) baseClass = 'isometric-houseDouble';
-
-            iconDiv.className = `${baseClass} ${iconClass}`;
-            iconDiv.style.position = 'relative';
-            iconDiv.style.top = '0';
-            iconDiv.style.left = '0';
-            iconDiv.style.transform = 'none';
-            buyoutHouseIcon.appendChild(iconDiv);
+        cardOk.style.display = isMyTurn ? 'block' : 'none';
+        cardOk.onclick = () => {
+            if (['WM', 'GENTRIFICATION', 'FLIGHT', 'INFLUENCER'].includes(card.id)) {
+                dismissedCardId = card.id + gameState.turn;
+                updateControls(gameState);
+            } else {
+                socket.emit('confirmCard');
+            }
+        };
+    } else if (gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT' && isMyTurn) {
+        menuDebt.style.display = 'flex';
+        const debtAmount = document.getElementById('debt-amount');
+        if (debtAmount) debtAmount.innerText = `${gameState.rentOwed}€`;
+    } else if (isMyTurn) {
+        // Vereinheitlichtes Default Menü
+        menuDefault.style.display = 'grid';
+        
+        // Button Labels und Info-Text
+        buyPropertyButton.innerText = 'Kaufen';
+        if (gameState.waitingForAction === 'BUYOUT_OR_PASS') {
+            buyPropertyButton.innerText = 'Abkaufen';
+            if (menuInfo && field) {
+                let buyoutMultiplier = 1.5;
+                const sameColorFields = gameState.board.filter(b => b.color === field.color && b.color !== "#ccc");
+                const isMonopoly = sameColorFields.length > 0 && sameColorFields.every(b => b.owner === field.owner);
+                if (field.type === 'PROPERTY' && isMonopoly) buyoutMultiplier = 1.5 * 1.15;
+                const buyoutPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * buyoutMultiplier);
+                menuInfo.innerText = `💸 ${field.name} abkaufen für ${buyoutPrice}€?`;
+                menuInfo.style.display = 'block';
+            }
+        } else if (gameState.waitingForAction === 'BUILD_OR_END') {
+            if (menuInfo && field) {
+                const hasBothUtilities = currentPlayer.properties.includes(12) && currentPlayer.properties.includes(28);
+                const discount = hasBothUtilities ? 0.65 : 1.0;
+                const effectiveHousePrice = Math.floor(field.housePrice * discount);
+                menuInfo.innerText = `🏠 Haus auf ${field.name} bauen für ${effectiveHousePrice}€?`;
+                menuInfo.style.display = 'block';
+            }
+        } else if (gameState.waitingForAction === 'BUY_OR_PASS') {
+            if (menuInfo && field) {
+                menuInfo.innerText = `🏙️ ${field.name} kaufen für ${field.price}€?`;
+                menuInfo.style.display = 'block';
+            }
+        } else if (['CHOOSE_WM_CITY', 'CHOOSE_GENTRIFICATION_CITY', 'CHOOSE_FLIGHT_DESTINATION'].includes(gameState.waitingForAction)) {
+            if (menuInfo) {
+                const msgMap = {
+                    'CHOOSE_WM_CITY': '⚽ Wähle eine deiner Städte für die WM!',
+                    'CHOOSE_GENTRIFICATION_CITY': '🏗️ Wähle eine Stadt für ein Gratis-Haus!',
+                    'CHOOSE_FLIGHT_DESTINATION': '✈️ Wähle ein Ziel für deinen Flug!'
+                };
+                menuInfo.innerText = msgMap[gameState.waitingForAction];
+                menuInfo.style.display = 'block';
+            }
+        } else if (gameState.waitingForAction === 'END_TURN') {
+            if (menuInfo) {
+                menuInfo.innerText = '✅ Zug beenden?';
+                menuInfo.style.display = 'block';
+            }
         }
-    } else if (gameState.waitingForAction === 'BUILD_OR_END' && field.type === 'PROPERTY') {
+
+        // Button Zustände
+        rollDiceButton.disabled = gameState.waitingForAction !== 'ROLL_DICE';
         
-        menuDefault.style.display = 'none';
-        menuBuild.style.display = 'flex';
-        menuCard.style.display = 'none';
-        menuBuyout.style.display = 'none';
-        menuDebt.style.display = 'none';
+        const canAffordBuy = field && currentPlayer.money >= field.price;
+        const isBuyout = gameState.waitingForAction === 'BUYOUT_OR_PASS';
+        let canAffordBuyout = false;
+        if (isBuyout && field) {
+            let buyoutMultiplier = 1.5;
+            const sameColorFields = gameState.board.filter(b => b.color === field.color && b.color !== "#ccc");
+            const isMonopoly = sameColorFields.length > 0 && sameColorFields.every(b => b.owner === field.owner);
+            if (field.type === 'PROPERTY' && isMonopoly) buyoutMultiplier = 1.5 * 1.15;
+            const buyoutPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * buyoutMultiplier);
+            canAffordBuyout = currentPlayer.money >= buyoutPrice;
+        }
         
-        // NEU: Das goldene Theme auf die Box anwenden
-        controls.classList.add('golden-theme');
-        
-        const modalPrice = document.getElementById('modal-price');
-        const modalUpgrade = document.getElementById('modal-upgrade');
+        buyPropertyButton.disabled = (gameState.waitingForAction !== 'BUY_OR_PASS' && !isBuyout) || (gameState.waitingForAction === 'BUY_OR_PASS' && !canAffordBuy) || (isBuyout && !canAffordBuyout);
         
         const hasBothUtilities = currentPlayer.properties.includes(12) && currentPlayer.properties.includes(28);
         const discount = hasBothUtilities ? 0.65 : 1.0;
-        const effectiveHousePrice = Math.floor(field.housePrice * discount);
-
-        if (modalPrice) {
-            if (hasBothUtilities) {
-                modalPrice.innerHTML = `<span style="text-decoration: line-through; opacity: 0.5;">${field.housePrice}€</span> <span style="color: #16a34a;">${effectiveHousePrice}€</span> <br><small style="font-size: 0.7rem; color: #b45309;">(Bau-Subvention -35%)</small>`;
-            } else {
-                modalPrice.innerText = `Kosten: ${field.housePrice}€`;
-            }
-        }
-        if (modalUpgrade) modalUpgrade.innerText = `Miet-Upgrade: +${field.rent * 2}€/Haus`;
-
-    } else if (gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT' && isMyTurn) {
+        const canAffordHouse = field && field.housePrice && currentPlayer.money >= Math.floor(field.housePrice * discount);
+        const canBuildMore = field && field.houses < 3;
+        buildHouseButton.disabled = gameState.waitingForAction !== 'BUILD_OR_END' || !canAffordHouse || !canBuildMore;
         
-        menuDefault.style.display = 'none';
-        menuBuild.style.display = 'none';
-        menuCard.style.display = 'none';
-        menuBuyout.style.display = 'none';
-        menuDebt.style.display = 'flex';
-        
-        const debtAmount = document.getElementById('debt-amount');
-        if (debtAmount) debtAmount.innerText = `${gameState.rentOwed}€`;
-
-    // STATE 1: Wir sind in einem normalen Spielzug
-    } else {
-        
-        menuBuild.style.display = 'none';
-        menuCard.style.display = 'none';
-        menuBuyout.style.display = 'none';
-        menuDebt.style.display = 'none';
-        menuDefault.style.display = 'grid';
-
-        // NEU: Das goldene Theme wieder entfernen (Box wird wieder blau)
-        controls.classList.remove('golden-theme');
-
-        // ... die normalen Buttons ...
-        rollDiceButton.disabled = gameState.waitingForAction !== 'ROLL_DICE';
-        buyPropertyButton.disabled = gameState.waitingForAction !== 'BUY_OR_PASS' || (field && currentPlayer.money < field.price);
-        
-        const canAffordHouse = field && field.housePrice && currentPlayer.money >= field.housePrice;
-        buildHouseButton.disabled = gameState.waitingForAction !== 'BUILD_OR_END' || !canAffordHouse;
-        
-        endTurnButton.disabled = (
-            gameState.waitingForAction !== 'END_TURN' && 
-            gameState.waitingForAction !== 'BUILD_OR_END' && 
-            gameState.waitingForAction !== 'BUY_OR_PASS'
-        );
+        endTurnButton.disabled = !['END_TURN', 'BUILD_OR_END', 'BUY_OR_PASS', 'BUYOUT_OR_PASS'].includes(gameState.waitingForAction);
     }
 }
 
@@ -305,78 +445,11 @@ function updateStatusBar(gameState) {
     const currentPlayer = gameState.players[gameState.turn];
     const isMyTurn = currentPlayer.id === socket.id;
     
-    // Overlay-Management
-    menuDefault.style.display = 'none';
-    menuBuild.style.display = 'none';
-    menuCard.style.display = 'none';
-
-    if (gameState.lastDrawnCard && (isMyTurn || currentPlayer.isAI)) {
-        const card = gameState.lastDrawnCard;
-        
-        // Wenn die Karte noch nicht weggeklickt wurde
-        if (dismissedCardId !== card.id + gameState.turn) {
-            menuCard.style.display = 'flex';
-            cardDisplay.className = card.type === 'CHANCE' ? 'chance-card' : 'community-card';
-            cardType.innerText = card.type === 'CHANCE' ? 'EREIGNIS' : 'GEMEINSCHAFT';
-            
-            // Image mapping
-            if (cardImages[card.id]) {
-                cardImage.src = cardImages[card.id];
-                cardImage.style.display = 'block';
-                const imgContainer = document.getElementById('card-image-container');
-                imgContainer.innerHTML = '';
-                imgContainer.appendChild(cardImage);
-                
-                // Hide text and title if image is present
-                cardTitle.style.display = 'none';
-                cardText.style.display = 'none';
-                cardType.style.display = 'none';
-                cardDisplay.style.background = 'transparent';
-                cardDisplay.style.border = 'none';
-                cardDisplay.style.boxShadow = 'none';
-            } else {
-                cardImage.style.display = 'none';
-                cardTitle.style.display = 'block';
-                cardText.style.display = 'block';
-                cardType.style.display = 'block';
-                cardTitle.innerText = card.title;
-                cardText.innerText = card.text;
-                cardDisplay.style.background = '#fef3c7';
-                cardDisplay.style.border = '8px solid #fbbf24';
-                cardDisplay.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
-                
-                const imgMap = {
-                    'WM': '⚽', 'INFLUENCER': '📱', 'GENTRIFICATION': '🏗️', 'BUBBLE': '📉',
-                    'CROWDFUNDING': '🚀', 'NEIGHBORHOOD': '🤝', 'SPEEDING': '📸', 'FLIGHT': '✈️'
-                };
-                const imgContainer = document.getElementById('card-image-container');
-                imgContainer.innerHTML = `<span style="font-size: 5rem;">${imgMap[card.id] || '❓'}</span>`;
-            }
-
-            // OK Button nur für den aktiven Spieler
-            cardOk.style.display = isMyTurn ? 'block' : 'none';
-            cardOk.onclick = () => {
-                if (['WM', 'GENTRIFICATION', 'FLIGHT', 'INFLUENCER'].includes(card.id)) {
-                    dismissedCardId = card.id + gameState.turn;
-                    updateStatusBar(gameState); // UI neu zeichnen
-                } else {
-                    socket.emit('confirmCard');
-                }
-            };
-        } else {
-            // Karte ist dismissed, zeige normales Menü falls nötig
-            if (gameState.waitingForAction === 'BUILD_OR_END' && isMyTurn) {
-                menuBuild.style.display = 'flex';
-            } else {
-                menuDefault.style.display = 'grid';
-            }
-        }
-    } else if (gameState.waitingForAction === 'BUILD_OR_END' && isMyTurn) {
-        menuBuild.style.display = 'flex';
-    } else {
-        menuDefault.style.display = 'grid';
+    // Update crypto button price
+    if (cryptoBtnPrice && gameState.vibeCoinPrice) {
+        cryptoBtnPrice.innerText = `${gameState.vibeCoinPrice}€`;
     }
-
+    
     let actionText = '';
     if (gameState.waitingForAction === 'ROLL_DICE') actionText = 'muss würfeln';
     if (gameState.waitingForAction === 'BUY_OR_PASS') actionText = 'entscheidet über Kauf';
@@ -443,10 +516,12 @@ function updateStatusBar(gameState) {
             }
             previousMoney[player.id] = player.money;
 
+            const portfolioValue = (player.coins || 0) * (gameState.vibeCoinPrice || 0);
             cornerEl.innerHTML = `
                 <div class="player-name">${player.name}</div>
                 <div class="player-money ${moneyClass}">
                     <span style="opacity: 0.7; font-size: 0.8rem;">€</span>${player.money}
+                    ${portfolioValue > 0 ? `<span class="player-coins-small">🪙${portfolioValue}€</span>` : ''}
                 </div>
                 <div class="player-props">
                     ${gameState.board.filter(f => f.owner === player.id).map(f => `<div style="width: 8px; height: 8px; background: ${f.color || '#94a3b8'}; border-radius: 2px;"></div>`).join('')}

@@ -31,8 +31,12 @@
                         <div id="current-turn">Warte auf Start...</div>
                         <div id="dice-display">🎲 0, 0</div>
                     </div>
+                    <div id="crypto-market-btn" title="Krypto-Markt">
+                        📈 <span id="crypto-btn-price">120€</span>
+                    </div>
                     <div id="controls">
                         <div id="menu-default" class="menu-view">
+                            <div id="menu-info" style="grid-column: span 2; text-align: center; margin-bottom: 10px; font-size: 0.85rem; color: #fbbf24; display: none; line-height: 1.2;"></div>
                             <button id="roll-dice">Würfeln</button>
                             <button id="buy-property" disabled>Kaufen</button>
                             <button id="build-house" disabled>Bauen</button>
@@ -40,8 +44,9 @@
                         </div>
 
                         <div id="menu-build" class="menu-view" style="display: none;">
-                            <div class="build-header">🏠 Haus bauen?</div>
+                            <div class="build-header">🏠 Bau-Optionen</div>
                             <div class="build-stats">
+                                <div id="build-city-name">Stadtname</div>
                                 <div id="modal-price" class="price">Kosten: 0€</div>
                                 <div id="modal-upgrade" class="upgrade">Miet-Upgrade: +0€/Haus</div>
                             </div>
@@ -82,6 +87,33 @@
                                 <div id="debt-amount" class="debt-amount">0€</div>
                                 <div class="debt-msg">Verkaufe Besitz, um deine Schulden zu begleichen.</div>
                             </div>
+                        </div>
+
+                        <div id="menu-crypto" class="menu-view" style="display: none;">
+                            <div class="crypto-header">📈 Vibe-Coin Markt</div>
+                            <div class="crypto-price-display">
+                                <div class="price-label">Aktueller Kurs:</div>
+                                <div id="crypto-current-price" class="price-value">120€</div>
+                            </div>
+                            <div id="crypto-chart-container">
+                                <canvas id="crypto-chart"></canvas>
+                            </div>
+                            <div class="crypto-user-info">
+                                <div id="crypto-user-coins">Deine Coins: 0</div>
+                                <div id="crypto-user-cash">Dein Cash: 0€</div>
+                            </div>
+                            <div class="crypto-trade-controls">
+                                <div class="amount-selector">
+                                    <button id="crypto-amount-minus">-</button>
+                                    <input type="number" id="crypto-amount-input" value="1" min="1">
+                                    <button id="crypto-amount-plus">+</button>
+                                </div>
+                                <div class="trade-actions">
+                                    <button id="crypto-buy-btn" class="confirm">Kaufen</button>
+                                    <button id="crypto-sell-btn" class="sell">Verkaufen</button>
+                                </div>
+                            </div>
+                            <button id="crypto-close-btn" class="cancel">Beenden</button>
                         </div>
                     </div>
                     <div id="game-log"></div>
