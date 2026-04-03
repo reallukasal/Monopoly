@@ -193,6 +193,12 @@ button:disabled {
     box-shadow: inset 0 0 15px rgba(0,0,0,0.05);
 }
 
+.field.unselectable {
+    filter: grayscale(0.8) opacity(0.3);
+    pointer-events: none;
+    transition: all 0.5s ease;
+}
+
 .field-content {
     display: flex;
     flex-direction: column;
@@ -219,7 +225,7 @@ button:disabled {
     max-width: 98%;
     color: #0f172a;
     text-transform: uppercase;
-    margin-top: 0;
+    margin-top: 4px;
     font-size: 0.55rem;
     letter-spacing: -0.02em;
     word-break: normal;
@@ -237,6 +243,30 @@ button:disabled {
     padding: 1px 4px;
     border-radius: 3px;
     border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.field-rent {
+    font-weight: 900;
+    margin-top: auto;
+    margin-bottom: 2px;
+    color: #0f172a;
+    font-size: 0.6rem;
+    background: rgba(139, 92, 246, 0.2); /* Subtle purple */
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.field-sell {
+    font-weight: 900;
+    margin-top: auto;
+    margin-bottom: 2px;
+    color: #0f172a;
+    font-size: 0.6rem;
+    background: rgba(249, 115, 22, 0.2); /* Subtle orange */
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(249, 115, 22, 0.3);
 }
 
 .color-bar {
@@ -329,11 +359,48 @@ button:disabled {
 .corner-bl { bottom: 15px; left: 15px; }
 .corner-br { bottom: 15px; right: 15px; }
 
-.corner .dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    box-shadow: 0 0 10px currentColor;
+.player-money {
+    font-weight: 900;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.money-gain {
+    animation: money-glow-green 1.5s ease-out;
+}
+
+.money-loss {
+    animation: money-glow-red 1.5s ease-out;
+}
+
+@keyframes money-glow-green {
+    0% { color: #4ade80; text-shadow: 0 0 20px #4ade80; transform: scale(1.2); }
+    100% { color: inherit; text-shadow: none; transform: scale(1); }
+}
+
+@keyframes money-glow-red {
+    0% { color: #ef4444; text-shadow: 0 0 20px #ef4444; transform: scale(1.2); }
+    100% { color: inherit; text-shadow: none; transform: scale(1); }
+}
+
+.player-name {
+    font-family: 'Anton', sans-serif;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    color: #fbbf24;
+    margin-bottom: 5px;
+}
+
+.player-props {
+    font-size: 0.65rem;
+    margin-top: 5px;
+    opacity: 0.8;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
 }
 
 #center-info {
@@ -355,21 +422,234 @@ button:disabled {
     margin-bottom: 5px;
 }
 
-#dice-display {
-    font-size: 1.2rem;
-    font-weight: 900;
+#menu-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+#menu-buyout {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 1.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    width: 100%;
+}
+
+.buyout-header {
+    font-family: 'Anton', sans-serif;
+    font-size: 1.8rem;
+    color: #fbbf24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.buyout-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 20px;
+    border-radius: 1rem;
+    width: 100%;
+    justify-content: center;
+}
+
+#buyout-city-name {
+    font-size: 1.3rem;
+    font-weight: 700;
     color: white;
-    background: rgba(0,0,0,0.4);
-    padding: 4px 12px;
+}
+
+#buyout-house-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.buyout-price {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #4ade80;
+}
+
+.buyout-actions {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+}
+
+.buyout-actions button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.2s;
+}
+
+.buyout-actions .confirm {
+    background: #8b5cf6;
+    color: white;
+}
+
+.buyout-actions .confirm:hover:not(:disabled) {
+    background: #8b5cf6;
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+    filter: brightness(1.1);
+}
+
+.buyout-actions .cancel {
+    background: #ef4444;
+    color: white;
+}
+
+.buyout-actions .cancel:hover:not(:disabled) {
+    background: #ef4444;
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+    filter: brightness(1.1);
+}
+
+#card-display {
+    width: 95%;
+    max-width: 450px;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: none;
+    position: relative;
+    color: #1e293b;
+}
+
+#card-type {
+    font-weight: 900;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    padding: 2px 10px;
+    border-radius: 4px;
+}
+
+.chance-card #card-type {
+    background: #f59e0b;
+    color: white;
+}
+
+.community-card #card-type {
+    background: #3b82f6;
+    color: white;
+}
+
+#card-image-container {
+    width: 100%;
+    height: auto;
+    min-height: 200px;
+    background: transparent;
+    border: none;
     border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#card-image {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+}
+
+#card-title {
+    font-family: 'Anton', sans-serif;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+#card-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+#card-ok {
+    background: #fbbf24;
+    color: #0f172a;
+    border: 3px solid #0f172a;
+    padding: 12px 18px;
+    border-radius: 1rem;
+    font-weight: 900;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    margin-top: 20px;
+    min-width: 80px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    z-index: 10;
+    position: relative;
+    pointer-events: auto;
+}
+
+#card-ok:hover {
+    background: #f59e0b;
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+#dice-display {
+    background: rgba(15, 23, 42, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 0.75rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
     display: inline-block;
+    min-width: 100px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+.dice-sum-glow {
+    color: #fbbf24 !important;
+    text-shadow: 0 0 15px #fbbf24, 0 0 30px rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.15) !important;
+    border: 2px solid #fbbf24 !important;
+    animation: dice-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes dice-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); }
 }
 
 #controls {
     display: none;
-    grid-template-columns: 1fr 1fr;
-    justify-items: center;
-    gap: 15px;
     background: rgba(15, 23, 42, 0.95);
     padding: 25px;
     border-radius: 2.5rem;
@@ -382,10 +662,14 @@ button:disabled {
     left: 50%;
     transform: translate(-50%, -50%) translateZ(100px);
     min-width: 320px;
+    max-width: 500px;
+    width: 90%;
 }
 
 #controls.show {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* STATE 1: Das alte 4er Grid */
@@ -394,6 +678,7 @@ button:disabled {
     grid-template-columns: 1fr 1fr;
     justify-items: center;
     gap: 15px;
+    width: 100%;
 }
 
 /* STATE 2: Das neue Bau-Menü */
@@ -403,6 +688,7 @@ button:disabled {
     gap: 15px;
     text-align: center;
     color: white;
+    width: 100%;
 }
 
 .build-header {
@@ -750,6 +1036,17 @@ button:disabled {
     filter: drop-shadow(3px 6px 4px rgba(0,0,0,0.7));
 }
 
+.isometric-stadium {
+    width: 45px;
+    height: 45px;
+    background-image: url('/assets/eventWMStadium.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    filter: drop-shadow(4px 8px 6px rgba(0,0,0,0.6));
+    z-index: 20;
+}
+
 /* Operation: Dynamische Zuweisung der Spielerfarben zu den Dateien */
 .house-p1 { background-image: url('/assets/House-P1.png'); }
 .house-p2 { background-image: url('/assets/House-P2.png'); }
@@ -765,6 +1062,17 @@ button:disabled {
 .houseDouble-p2 { background-image: url('/assets/DoubleHouse-P2.png'); }
 .houseDouble-p3 { background-image: url('/assets/DoubleHouse-P3.png'); }
 .houseDouble-p4 { background-image: url('/assets/DoubleHouse-P4.png'); }
+
+/* Monopoly Glow Effects */
+.monopoly-glow-subtle-p1 { box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.3) !important; border: 1.5px solid rgba(239, 68, 68, 0.5) !important; }
+.monopoly-glow-subtle-p2 { box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.3) !important; border: 1.5px solid rgba(59, 130, 246, 0.5) !important; }
+.monopoly-glow-subtle-p3 { box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.3) !important; border: 1.5px solid rgba(16, 185, 129, 0.5) !important; }
+.monopoly-glow-subtle-p4 { box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.3) !important; border: 1.5px solid rgba(245, 158, 11, 0.5) !important; }
+
+.monopoly-glow-strong-p1 { box-shadow: inset 0 0 35px rgba(239, 68, 68, 0.6), 0 0 25px rgba(239, 68, 68, 0.4) !important; border: 3px solid rgba(239, 68, 68, 0.9) !important; z-index: 5; }
+.monopoly-glow-strong-p2 { box-shadow: inset 0 0 35px rgba(59, 130, 246, 0.6), 0 0 25px rgba(59, 130, 246, 0.4) !important; border: 3px solid rgba(59, 130, 246, 0.9) !important; z-index: 5; }
+.monopoly-glow-strong-p3 { box-shadow: inset 0 0 35px rgba(16, 185, 129, 0.6), 0 0 25px rgba(16, 185, 129, 0.4) !important; border: 3px solid rgba(16, 185, 129, 0.9) !important; z-index: 5; }
+.monopoly-glow-strong-p4 { box-shadow: inset 0 0 35px rgba(245, 158, 11, 0.6), 0 0 25px rgba(245, 158, 11, 0.4) !important; border: 3px solid rgba(245, 158, 11, 0.9) !important; z-index: 5; }
 
 /* Basis-Aussehen für alle Spezialfeld-Icons */
 .custom-icon {
@@ -789,6 +1097,53 @@ button:disabled {
 .icon-station { background-image: url('/assets/icon-station.png'); }
 .icon-tax { background-image: url('/assets/icon-tax.png'); }
 .icon-utility { background-image: url('/assets/icon-utility.png'); }
+
+/* DEBT MENU */
+#menu-debt {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 1.5rem;
+    border: 2px solid #ef4444;
+    backdrop-filter: blur(10px);
+    width: 100%;
+}
+
+.debt-header {
+    font-family: 'Anton', sans-serif;
+    font-size: 1.8rem;
+    color: #ef4444;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.debt-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px 20px;
+    border-radius: 1rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.debt-amount {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #ef4444;
+    text-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.debt-msg {
+    font-size: 0.9rem;
+    color: white;
+    opacity: 0.8;
+    text-align: center;
+    font-weight: 500;
+}
 
 
 

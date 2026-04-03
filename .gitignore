@@ -6,3 +6,17 @@ coverage/
 *.log
 .env*
 !.env.example
+
+public/assets/communityBlitzer.png
+public/assets/communityCrowdfunding.png
+public/assets/communityFirstClass.png
+public/assets/communityHelp.png
+public/assets/DoubleHouse-P1.png
+public/assets/DoubleHouse-P2.png
+public/assets/DoubleHouse-P3.png
+public/assets/DoubleHouse-P4.png
+public/assets/eventFootballWM.png
+public/assets/eventGentrification.png
+public/assets/eventImmobilien.png
+public/assets/eventInfluencerHype.png
+public/assets/eventWMStadium.png

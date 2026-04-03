@@ -47,7 +47,40 @@
                             </div>
                             <div class="build-actions">
                                 <button id="modal-confirm" class="confirm">Bauen</button>
-                                <button id="modal-cancel" class="cancel">Zurück</button>
+                                <button id="modal-cancel" class="cancel">Beenden</button>
+                            </div>
+                        </div>
+
+                        <div id="menu-card" class="menu-view" style="display: none;">
+                            <div id="card-display">
+                                <div id="card-type">EREIGNIS</div>
+                                <div id="card-image-container">
+                                    <img id="card-image" src="" alt="Card Image" referrerPolicy="no-referrer">
+                                </div>
+                                <div id="card-title">Titel</div>
+                                <div id="card-text">Beschreibung</div>
+                                <button id="card-ok">OK</button>
+                            </div>
+                        </div>
+
+                        <div id="menu-buyout" class="menu-view" style="display: none;">
+                            <div class="buyout-header">💸 Abkaufen?</div>
+                            <div class="buyout-info">
+                                <div id="buyout-city-name">Stadtname</div>
+                                <div id="buyout-house-icon"></div>
+                            </div>
+                            <div id="buyout-price" class="buyout-price">Preis: 0€</div>
+                            <div class="buyout-actions">
+                                <button id="buyout-confirm" class="confirm">Abkaufen</button>
+                                <button id="buyout-cancel" class="cancel">Beenden</button>
+                            </div>
+                        </div>
+
+                        <div id="menu-debt" class="menu-view" style="display: none;">
+                            <div class="debt-header">⚠️ SCHULDEN!</div>
+                            <div class="debt-info">
+                                <div id="debt-amount" class="debt-amount">0€</div>
+                                <div class="debt-msg">Verkaufe Besitz, um deine Schulden zu begleichen.</div>
                             </div>
                         </div>
                     </div>

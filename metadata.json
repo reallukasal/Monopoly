@@ -1,5 +1,5 @@
 {
-  "name": "Monopoly Multiplayer",
+  "name": "Monopoly",
   "description": "A turn-based local multiplayer board game for 4 players using Node.js, Express, and Socket.io.",
   "requestFramePermissions": []
 }

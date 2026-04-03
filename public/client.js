@@ -24,6 +24,35 @@ const buildHouseButton = document.getElementById('build-house');
 const endTurnButton = document.getElementById('end-turn');
 const gameLog = document.getElementById('game-log');
 
+const menuDefault = document.getElementById('menu-default');
+const menuBuild = document.getElementById('menu-build');
+const menuCard = document.getElementById('menu-card');
+const menuBuyout = document.getElementById('menu-buyout');
+
+const buyoutCityName = document.getElementById('buyout-city-name');
+const buyoutHouseIcon = document.getElementById('buyout-house-icon');
+const buyoutPriceDisplay = document.getElementById('buyout-price');
+const buyoutConfirm = document.getElementById('buyout-confirm');
+const buyoutCancel = document.getElementById('buyout-cancel');
+
+const cardDisplay = document.getElementById('card-display');
+const cardType = document.getElementById('card-type');
+const cardImage = document.getElementById('card-image');
+const cardTitle = document.getElementById('card-title');
+const cardText = document.getElementById('card-text');
+const cardOk = document.getElementById('card-ok');
+
+const cardImages = {
+    'WM': '/assets/eventFootballWM.png',
+    'INFLUENCER': '/assets/eventInfluencerHype.png',
+    'GENTRIFICATION': '/assets/eventGentrification.png',
+    'BUBBLE': '/assets/eventImmobilien.png',
+    'CROWDFUNDING': '/assets/communityCrowdfunding.png',
+    'NEIGHBORHOOD': '/assets/communityHelp.png',
+    'SPEEDING': '/assets/communityBlitzer.png',
+    'FLIGHT': '/assets/communityFirstClass.png'
+};
+
 // Wenn die Verbindung erfolgreich ist
 socket.on('connect', () => {
     console.log(`Verbunden! Socket-ID: ${socket.id}`);
@@ -84,6 +113,18 @@ if (modalCancel) {
     });
 }
 
+if (buyoutConfirm) {
+    buyoutConfirm.addEventListener('click', () => {
+        socket.emit('buyoutProperty');
+    });
+}
+
+if (buyoutCancel) {
+    buyoutCancel.addEventListener('click', () => {
+        socket.emit('endTurn');
+    });
+}
+
 socket.on('reload', () => {
     window.location.reload();
 });
@@ -106,22 +147,85 @@ function updateControls(gameState) {
     // Die beiden Container anvisieren
     const menuDefault = document.getElementById('menu-default');
     const menuBuild = document.getElementById('menu-build');
+    const menuCard = document.getElementById('menu-card');
+    const menuBuyout = document.getElementById('menu-buyout');
+    const menuDebt = document.getElementById('menu-debt');
+
+    if (!menuDefault || !menuBuild || !menuCard || !menuBuyout || !menuDebt) return;
 
     // Das äußere Fenster verwalten
-    if (isMyTurn && gameState.gameStarted) {
+    if (isMyTurn && gameState.gameStarted && gameState.waitingForAction !== 'GAME_OVER') {
         controls.classList.add('show');
     } else {
         controls.classList.remove('show');
-        return; // Direkt abbrechen, wenn man nicht dran ist
+        return; // Direkt abbrechen, wenn man nicht dran ist oder Spiel vorbei
     }
 
     const field = gameState.board[currentPlayer.position];
 
-    // STATE 2: Befinden wir uns im Baumodus?
-    if (gameState.waitingForAction === 'BUILD_OR_END' && field.type === 'PROPERTY') {
+    // Check if a card is active and not dismissed
+    const isCardActive = gameState.lastDrawnCard && dismissedCardId !== gameState.lastDrawnCard.id + gameState.turn;
+
+    if (isCardActive) {
+        menuDefault.style.display = 'none';
+        menuBuild.style.display = 'none';
+        menuBuyout.style.display = 'none';
+        menuDebt.style.display = 'none';
+        menuCard.style.display = 'flex';
+        controls.classList.remove('golden-theme');
+        return; // Early return to keep card menu visible
+    }
+
+    // STATE 3: Abkaufen?
+    if (gameState.waitingForAction === 'BUYOUT_OR_PASS') {
+        menuDefault.style.display = 'none';
+        menuBuild.style.display = 'none';
+        menuCard.style.display = 'none';
+        menuDebt.style.display = 'none';
+        menuBuyout.style.display = 'flex';
+        controls.classList.remove('golden-theme');
+
+        let buyoutMultiplier = 1.5;
+        const sameColorFields = gameState.board.filter(b => b.color === field.color && b.color !== "#ccc");
+        const isMonopoly = sameColorFields.length > 0 && sameColorFields.every(b => b.owner === field.owner);
+        if (field.type === 'PROPERTY' && isMonopoly) {
+            buyoutMultiplier = 1.5 * 1.15;
+        }
+        const buyoutPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * buyoutMultiplier);
+        buyoutCityName.innerText = field.name;
+        buyoutPriceDisplay.innerText = `Preis: ${buyoutPrice}€`;
+
+        // Haus-Icon anzeigen
+        buyoutHouseIcon.innerHTML = '';
+        if (field.houses > 0) {
+            const ownerIndex = gameState.players.findIndex(p => p.id === field.owner);
+            const playerNum = ownerIndex !== -1 ? ownerIndex + 1 : 1;
+            let iconClass = '';
+            if (field.houses >= 3) iconClass = `hotel-p${playerNum}`;
+            else if (field.houses === 2) iconClass = `houseDouble-p${playerNum}`;
+            else iconClass = `house-p${playerNum}`;
+            
+            const iconDiv = document.createElement('div');
+            const isHotel = field.houses >= 3;
+            const isDouble = field.houses === 2;
+            let baseClass = 'isometric-house';
+            if (isHotel) baseClass = 'isometric-hotel';
+            else if (isDouble) baseClass = 'isometric-houseDouble';
+
+            iconDiv.className = `${baseClass} ${iconClass}`;
+            iconDiv.style.position = 'relative';
+            iconDiv.style.top = '0';
+            iconDiv.style.left = '0';
+            iconDiv.style.transform = 'none';
+            buyoutHouseIcon.appendChild(iconDiv);
+        }
+    } else if (gameState.waitingForAction === 'BUILD_OR_END' && field.type === 'PROPERTY') {
         
         menuDefault.style.display = 'none';
         menuBuild.style.display = 'flex';
+        menuCard.style.display = 'none';
+        menuBuyout.style.display = 'none';
+        menuDebt.style.display = 'none';
         
         // NEU: Das goldene Theme auf die Box anwenden
         controls.classList.add('golden-theme');
@@ -129,13 +233,37 @@ function updateControls(gameState) {
         const modalPrice = document.getElementById('modal-price');
         const modalUpgrade = document.getElementById('modal-upgrade');
         
-        if (modalPrice) modalPrice.innerText = `Kosten: ${field.housePrice}€`;
+        const hasBothUtilities = currentPlayer.properties.includes(12) && currentPlayer.properties.includes(28);
+        const discount = hasBothUtilities ? 0.65 : 1.0;
+        const effectiveHousePrice = Math.floor(field.housePrice * discount);
+
+        if (modalPrice) {
+            if (hasBothUtilities) {
+                modalPrice.innerHTML = `<span style="text-decoration: line-through; opacity: 0.5;">${field.housePrice}€</span> <span style="color: #16a34a;">${effectiveHousePrice}€</span> <br><small style="font-size: 0.7rem; color: #b45309;">(Bau-Subvention -35%)</small>`;
+            } else {
+                modalPrice.innerText = `Kosten: ${field.housePrice}€`;
+            }
+        }
         if (modalUpgrade) modalUpgrade.innerText = `Miet-Upgrade: +${field.rent * 2}€/Haus`;
+
+    } else if (gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT' && isMyTurn) {
+        
+        menuDefault.style.display = 'none';
+        menuBuild.style.display = 'none';
+        menuCard.style.display = 'none';
+        menuBuyout.style.display = 'none';
+        menuDebt.style.display = 'flex';
+        
+        const debtAmount = document.getElementById('debt-amount');
+        if (debtAmount) debtAmount.innerText = `${gameState.rentOwed}€`;
 
     // STATE 1: Wir sind in einem normalen Spielzug
     } else {
         
         menuBuild.style.display = 'none';
+        menuCard.style.display = 'none';
+        menuBuyout.style.display = 'none';
+        menuDebt.style.display = 'none';
         menuDefault.style.display = 'grid';
 
         // NEU: Das goldene Theme wieder entfernen (Box wird wieder blau)
@@ -143,7 +271,7 @@ function updateControls(gameState) {
 
         // ... die normalen Buttons ...
         rollDiceButton.disabled = gameState.waitingForAction !== 'ROLL_DICE';
-        buyPropertyButton.disabled = gameState.waitingForAction !== 'BUY_OR_PASS';
+        buyPropertyButton.disabled = gameState.waitingForAction !== 'BUY_OR_PASS' || (field && currentPlayer.money < field.price);
         
         const canAffordHouse = field && field.housePrice && currentPlayer.money >= field.housePrice;
         buildHouseButton.disabled = gameState.waitingForAction !== 'BUILD_OR_END' || !canAffordHouse;
@@ -167,20 +295,132 @@ socket.on('gameStarted', (gameState) => {
     updateControls(gameState);
 });
 
+// Globaler State für Geld-Tracking und Würfel-Animation
+let previousMoney = {};
+let lastRollSeen = [0, 0];
+let diceDisplayMode = 'individual'; // 'individual' oder 'sum'
+let dismissedCardId = null;
+
 function updateStatusBar(gameState) {
     const currentPlayer = gameState.players[gameState.turn];
     const isMyTurn = currentPlayer.id === socket.id;
     
+    // Overlay-Management
+    menuDefault.style.display = 'none';
+    menuBuild.style.display = 'none';
+    menuCard.style.display = 'none';
+
+    if (gameState.lastDrawnCard && (isMyTurn || currentPlayer.isAI)) {
+        const card = gameState.lastDrawnCard;
+        
+        // Wenn die Karte noch nicht weggeklickt wurde
+        if (dismissedCardId !== card.id + gameState.turn) {
+            menuCard.style.display = 'flex';
+            cardDisplay.className = card.type === 'CHANCE' ? 'chance-card' : 'community-card';
+            cardType.innerText = card.type === 'CHANCE' ? 'EREIGNIS' : 'GEMEINSCHAFT';
+            
+            // Image mapping
+            if (cardImages[card.id]) {
+                cardImage.src = cardImages[card.id];
+                cardImage.style.display = 'block';
+                const imgContainer = document.getElementById('card-image-container');
+                imgContainer.innerHTML = '';
+                imgContainer.appendChild(cardImage);
+                
+                // Hide text and title if image is present
+                cardTitle.style.display = 'none';
+                cardText.style.display = 'none';
+                cardType.style.display = 'none';
+                cardDisplay.style.background = 'transparent';
+                cardDisplay.style.border = 'none';
+                cardDisplay.style.boxShadow = 'none';
+            } else {
+                cardImage.style.display = 'none';
+                cardTitle.style.display = 'block';
+                cardText.style.display = 'block';
+                cardType.style.display = 'block';
+                cardTitle.innerText = card.title;
+                cardText.innerText = card.text;
+                cardDisplay.style.background = '#fef3c7';
+                cardDisplay.style.border = '8px solid #fbbf24';
+                cardDisplay.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+                
+                const imgMap = {
+                    'WM': '⚽', 'INFLUENCER': '📱', 'GENTRIFICATION': '🏗️', 'BUBBLE': '📉',
+                    'CROWDFUNDING': '🚀', 'NEIGHBORHOOD': '🤝', 'SPEEDING': '📸', 'FLIGHT': '✈️'
+                };
+                const imgContainer = document.getElementById('card-image-container');
+                imgContainer.innerHTML = `<span style="font-size: 5rem;">${imgMap[card.id] || '❓'}</span>`;
+            }
+
+            // OK Button nur für den aktiven Spieler
+            cardOk.style.display = isMyTurn ? 'block' : 'none';
+            cardOk.onclick = () => {
+                if (['WM', 'GENTRIFICATION', 'FLIGHT', 'INFLUENCER'].includes(card.id)) {
+                    dismissedCardId = card.id + gameState.turn;
+                    updateStatusBar(gameState); // UI neu zeichnen
+                } else {
+                    socket.emit('confirmCard');
+                }
+            };
+        } else {
+            // Karte ist dismissed, zeige normales Menü falls nötig
+            if (gameState.waitingForAction === 'BUILD_OR_END' && isMyTurn) {
+                menuBuild.style.display = 'flex';
+            } else {
+                menuDefault.style.display = 'grid';
+            }
+        }
+    } else if (gameState.waitingForAction === 'BUILD_OR_END' && isMyTurn) {
+        menuBuild.style.display = 'flex';
+    } else {
+        menuDefault.style.display = 'grid';
+    }
+
     let actionText = '';
     if (gameState.waitingForAction === 'ROLL_DICE') actionText = 'muss würfeln';
     if (gameState.waitingForAction === 'BUY_OR_PASS') actionText = 'entscheidet über Kauf';
     if (gameState.waitingForAction === 'END_TURN') actionText = 'beendet den Zug';
     if (gameState.waitingForAction === 'BUILD_OR_END') actionText = 'kann bauen oder beenden';
+    if (gameState.waitingForAction === 'CHOOSE_WM_CITY') actionText = 'wählt WM-Stadt';
+    if (gameState.waitingForAction === 'CHOOSE_GENTRIFICATION_CITY') actionText = 'wählt Stadt für Gratis-Haus';
+    if (gameState.waitingForAction === 'CHOOSE_FLIGHT_DESTINATION') actionText = 'wählt Flugziel';
+    if (gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT') actionText = `muss ${gameState.rentOwed}€ Schulden begleichen`;
+    if (gameState.waitingForAction === 'GAME_OVER') actionText = 'SPIEL VORBEI!';
 
-    currentTurnDisplay.innerText = `${currentPlayer.name} ${actionText}`;
-    currentTurnDisplay.style.color = isMyTurn ? '#4ade80' : 'white';
+    currentTurnDisplay.innerText = gameState.waitingForAction === 'GAME_OVER' ? '🏆 SPIEL VORBEI!' : `${currentPlayer.name} ${actionText}`;
+    currentTurnDisplay.style.color = (isMyTurn || gameState.waitingForAction === 'GAME_OVER') ? '#4ade80' : 'white';
 
-    diceDisplay.innerText = `🎲 ${gameState.lastRoll[0]}, ${gameState.lastRoll[1]}`;
+    // Würfel-Display Logik
+    const r = gameState.lastRoll;
+    const isNewRoll = r[0] !== lastRollSeen[0] || r[1] !== lastRollSeen[1];
+    
+    if (isNewRoll && (r[0] > 0 || r[1] > 0)) {
+        lastRollSeen = [...r];
+        diceDisplayMode = 'individual';
+        diceDisplay.classList.remove('dice-sum-glow');
+        diceDisplay.innerText = `🎲 ${r[0]}, ${r[1]}`;
+        
+        // Nach kurzer Verzögerung die Summe mit Animation zeigen
+        setTimeout(() => {
+            diceDisplayMode = 'sum';
+            diceDisplay.innerText = `🎲 ${r[0] + r[1]}`;
+            diceDisplay.classList.add('dice-sum-glow');
+        }, 800);
+    } else if (r[0] === 0 && r[1] === 0) {
+        lastRollSeen = [0, 0];
+        diceDisplayMode = 'individual';
+        diceDisplay.innerText = `🎲 0, 0`;
+        diceDisplay.classList.remove('dice-sum-glow');
+    } else {
+        // Bestehenden Roll beibehalten
+        if (diceDisplayMode === 'sum') {
+            diceDisplay.innerText = `🎲 ${r[0] + r[1]}`;
+            diceDisplay.classList.add('dice-sum-glow');
+        } else {
+            diceDisplay.innerText = `🎲 ${r[0]}, ${r[1]}`;
+        }
+    }
 
     // Spieler-Attribute in die Ecken
     const corners = ['tl', 'tr', 'bl', 'br'];
@@ -192,15 +432,34 @@ function updateStatusBar(gameState) {
             cornerEl.style.border = isCurrent ? '3px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.1)';
             cornerEl.style.boxShadow = isCurrent ? '0 0 20px rgba(251, 191, 36, 0.4)' : 'none';
             
+            // Geld-Animation Logik
+            let moneyClass = '';
+            if (previousMoney[player.id] !== undefined) {
+                if (player.money > previousMoney[player.id]) {
+                    moneyClass = 'money-gain';
+                } else if (player.money < previousMoney[player.id]) {
+                    moneyClass = 'money-loss';
+                }
+            }
+            previousMoney[player.id] = player.money;
+
             cornerEl.innerHTML = `
-                <div class="player-name" style="font-family: 'Anton', sans-serif; text-transform: uppercase; font-size: 0.9rem; color: #fbbf24; margin-bottom: 5px;">${player.name}</div>
-                <div class="player-money" style="font-weight: 900; font-size: 1.2rem; display: flex; align-items: center; gap: 5px;">
+                <div class="player-name">${player.name}</div>
+                <div class="player-money ${moneyClass}">
                     <span style="opacity: 0.7; font-size: 0.8rem;">€</span>${player.money}
                 </div>
-                <div class="player-props" style="font-size: 0.65rem; margin-top: 5px; opacity: 0.8; display: flex; flex-wrap: wrap; gap: 2px;">
+                <div class="player-props">
                     ${gameState.board.filter(f => f.owner === player.id).map(f => `<div style="width: 8px; height: 8px; background: ${f.color || '#94a3b8'}; border-radius: 2px;"></div>`).join('')}
                 </div>
             `;
+            
+            // Animation nach 1.5s entfernen, damit sie beim nächsten Mal wieder triggert
+            if (moneyClass) {
+                setTimeout(() => {
+                    const moneyEl = cornerEl.querySelector('.player-money');
+                    if (moneyEl) moneyEl.classList.remove(moneyClass);
+                }, 1500);
+            }
         }
     });
 }
@@ -230,7 +489,7 @@ function renderBoard(gameState) {
     
     // Nur Felder entfernen, board-center behalten
     Array.from(boardContainer.children).forEach(child => {
-        if (child.className === 'field') boardContainer.removeChild(child);
+        if (child.classList.contains('field')) boardContainer.removeChild(child);
     });
 
     board.forEach(field => {
@@ -239,10 +498,77 @@ function renderBoard(gameState) {
         f.setAttribute('data-id', field.id);
         f.setAttribute('data-type', field.type);
         
+        // Monopoly Glow Check
+        if (field.color && field.owner) {
+            const ownerIndex = players.findIndex(p => p.id === field.owner);
+            if (ownerIndex !== -1) {
+                const sameColorFields = board.filter(b => b.color === field.color);
+                const isMonopoly = sameColorFields.every(b => b.owner === field.owner);
+                
+                if (isMonopoly) {
+                    f.classList.add(`monopoly-glow-strong-p${ownerIndex + 1}`);
+                } else {
+                    f.classList.add(`monopoly-glow-subtle-p${ownerIndex + 1}`);
+                }
+            }
+        }
+        
         // Grid Position berechnen
         const pos = getGridPosition(field.id);
         f.style.gridRow = pos.row;
         f.style.gridColumn = pos.col;
+
+        // Visual feedback for field selection
+        const isChoosingWM = gameState.waitingForAction === 'CHOOSE_WM_CITY';
+        const isChoosingGentrification = gameState.waitingForAction === 'CHOOSE_GENTRIFICATION_CITY';
+        const isChoosingFlight = gameState.waitingForAction === 'CHOOSE_FLIGHT_DESTINATION';
+        const isChoosingSell = gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT';
+        const currentPlayerId = gameState.players[gameState.turn].id;
+
+        if (isChoosingWM || isChoosingGentrification || isChoosingFlight || isChoosingSell) {
+            let selectable = false;
+            if (isChoosingWM) {
+                selectable = (field.owner === currentPlayerId && field.type === 'PROPERTY');
+            } else if (isChoosingGentrification) {
+                selectable = (field.owner === currentPlayerId && field.type === 'PROPERTY' && field.houses < 3);
+            } else if (isChoosingFlight) {
+                selectable = (field.type === 'PROPERTY' || field.type === 'STATION' || field.type === 'UTILITY');
+            } else if (isChoosingSell) {
+                selectable = (field.owner === socket.id);
+            }
+            
+            if (!selectable) {
+                f.classList.add('unselectable');
+            }
+        }
+
+        // Klick-Logik für interaktive Karten
+        f.style.cursor = 'default';
+        if (gameState.waitingForAction === 'CHOOSE_WM_CITY') {
+            if (field.owner === socket.id) {
+                f.style.cursor = 'pointer';
+                f.onclick = () => socket.emit('chooseWMCity', field.id);
+                f.style.boxShadow = '0 0 15px #fbbf24';
+            }
+        } else if (gameState.waitingForAction === 'CHOOSE_GENTRIFICATION_CITY') {
+            if (field.owner === socket.id && field.type === 'PROPERTY' && field.houses < 3) {
+                f.style.cursor = 'pointer';
+                f.onclick = () => socket.emit('chooseGentrificationCity', field.id);
+                f.style.boxShadow = '0 0 15px #4ade80';
+            }
+        } else if (gameState.waitingForAction === 'CHOOSE_FLIGHT_DESTINATION') {
+            if (field.type === 'PROPERTY' || field.type === 'STATION' || field.type === 'UTILITY') {
+                f.style.cursor = 'pointer';
+                f.onclick = () => socket.emit('chooseFlightDestination', field.id);
+                f.style.boxShadow = '0 0 15px #3b82f6';
+            }
+        } else if (gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT') {
+            if (field.owner === socket.id) {
+                f.style.cursor = 'pointer';
+                f.onclick = () => socket.emit('sellProperty', field.id);
+                f.style.boxShadow = '0 0 15px #f97316';
+            }
+        }
 
         // Alle Felder sollen zum Spieler schauen (Rotation = 0)
         let rotation = 0;
@@ -277,15 +603,17 @@ function renderBoard(gameState) {
             houseIndicator = `<div class="house-indicator">${icon}</div>`;
         }*/
         let houseIndicator = '';
-        if (field.houses > 0) {
+        if (field.specialEffect === 'WM') {
+            houseIndicator = `<div class="build-container"><div class="isometric-stadium"></div></div>`;
+        } else if (field.houses > 0) {
             // Finde heraus, wem das Feld gehört, um die Farb-Nummer zu ermitteln
             const ownerIndex = players.findIndex(p => p.id === field.owner);
             const playerNum = ownerIndex !== -1 ? ownerIndex + 1 : 1;
 
             houseIndicator = `<div class="build-container">`;
             
-            // Hotel-Bedingung (Im Standard-Monopoly ab 5 Häusern, passe die Zahl ggf. an deine Backend-Logik an)
-            if (field.houses >= 5) {
+            // Hotel-Bedingung (Im Backend: 3 Häuser = Hotel)
+            if (field.houses >= 3) {
                 houseIndicator += `<div class="isometric-hotel hotel-p${playerNum}"></div>`;
             } else {
                 // Operation: Mathematische Aufteilung in Doppel- und Einzelhäuser
@@ -306,6 +634,36 @@ function renderBoard(gameState) {
             houseIndicator += `</div>`;
         }
 
+        let priceOrRentHTML = '';
+        if (field.price > 0) {
+            if (gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT' && field.owner === socket.id) {
+                const sellPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * 0.75);
+                priceOrRentHTML = `<div class="field-sell">VERKAUF: ${sellPrice}€</div>`;
+            } else if (field.owner) {
+                // Miete berechnen (Logik analog zum Server)
+                let currentRent = field.rent || Math.floor(field.price * 0.1);
+                if (field.houses === 1) currentRent *= 2;
+                if (field.houses === 2) currentRent *= 3;
+                if (field.houses >= 3) currentRent *= 5; // Hotel (3 Häuser im Backend = Hotel)
+                
+                // Monopoly Bonus (7.5%)
+                const sameColorFields = gameState.board.filter(b => b.color === field.color && b.color !== "#ccc");
+                const isMonopoly = sameColorFields.length > 0 && sameColorFields.every(b => b.owner === field.owner);
+                if (field.type === 'PROPERTY' && isMonopoly) {
+                    currentRent = Math.floor(currentRent * 1.075);
+                }
+
+                // WM Bonus
+                if (field.specialEffect === 'WM') {
+                    currentRent *= 3;
+                }
+                
+                priceOrRentHTML = `<div class="field-rent">${currentRent}€</div>`;
+            } else {
+                priceOrRentHTML = `<div class="field-price">${field.price}€</div>`;
+            }
+        }
+
         f.innerHTML = `
             <div class="field-content" style="transform: rotate(${rotation}deg)">
                 ${colorBar}
@@ -313,7 +671,7 @@ function renderBoard(gameState) {
                 ${houseIndicator}
                 ${iconHTML} 
                 <div class="field-name">${field.name}</div>
-                ${field.price > 0 ? `<div class="field-price">${field.price}€</div>` : ''}
+                ${priceOrRentHTML}
             </div>
         `;
 
