@@ -102,7 +102,7 @@ function handleRoll(player) {
   
   // Vibe-Coin Preis-Schwankung nach jedem Wurf
   const r = Math.random();
-  let changePercent = 0;
+  let changePercent = (Math.random() * 0.5) - 0.25;
   if (r < 0.7) {
     // 70% Wahrscheinlichkeit: -2% bis +2%
     changePercent = (Math.random() * 0.04) - 0.02;
@@ -755,14 +755,7 @@ io.on('connection', (socket) => {
       player.money -= gameState.rentOwed;
       const recipient = gameState.players.find(p => p.id === gameState.rentRecipientId);
       if (recipient) {
-        // Recipient already got the money in handleLanding, but wait...
-        // Actually, in handleLanding we already subtracted rent from player and added to owner.
-        // If player had 100 and rent was 400, player is now at -300.
-        // My logic above sets player.money = 0 and rentOwed = 300.
-        // So when player sells for 400, they have 400. 400 >= 300.
-        // They pay 300, remain with 100.
-        // The recipient already got the FULL rent in handleLanding.
-        // So we don't need to add to recipient again.
+        recipient.money += gameState.rentOwed;
       }
       gameState.rentOwed = 0;
       gameState.rentRecipientId = null;
@@ -869,11 +862,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const index = gameState.players.findIndex(p => p.id === socket.id);
-    if (index !== -1) {
-      gameState.players.splice(index, 1);
-      gameState.players = gameState.players.filter(p => !p.isAI);
-      gameState.gameStarted = false;
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (player) {
+      if (gameState.gameStarted) {
+        // Spiel läuft? Lass eine KI übernehmen!
+        player.isAI = true;
+        player.name = player.name + " (Auto-Play)";
+        io.emit('gameLog', `🔌 ${player.name} hat die Verbindung verloren. Ein Bot übernimmt.`);
+        checkAITurn(); // Falls er gerade dran war
+      } else {
+        // Spiel noch in der Lobby? Dann normal löschen
+        gameState.players = gameState.players.filter(p => p.id !== socket.id);
+      }
       io.emit('gameStateUpdate', gameState);
     }
   });

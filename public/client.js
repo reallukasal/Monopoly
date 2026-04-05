@@ -558,21 +558,44 @@ function updateLobby(gameState) {
 }
 
 // Spielfeld rendern (11x11 Grid Layout)
+// Spielfeld rendern (Smarte DOM-Updates statt Abriss)
 function renderBoard(gameState) {
     const { board, players, turn } = gameState;
     const boardContainer = document.getElementById('board-container');
     
-    // Nur Felder entfernen, board-center behalten
-    Array.from(boardContainer.children).forEach(child => {
-        if (child.classList.contains('field')) boardContainer.removeChild(child);
-    });
+    // 1. OPERATION: Prüfen, ob die Felder schon existieren
+    const existingFields = boardContainer.querySelectorAll('.field');
+    const isInitialized = existingFields.length === 40;
 
-    board.forEach(field => {
-        const f = document.createElement('div');
-        f.className = 'field';
-        f.setAttribute('data-id', field.id);
-        f.setAttribute('data-type', field.type);
+    board.forEach((field, index) => {
+        let f;
         
+        if (!isInitialized) {
+            // PHASE A: Initiales Bauen (nur beim allerersten Aufruf)
+            f = document.createElement('div');
+            f.className = 'field';
+            f.setAttribute('data-id', field.id);
+            f.setAttribute('data-type', field.type);
+            
+            // Grid Position einstellen
+            const pos = getGridPosition(field.id);
+            f.style.gridRow = pos.row;
+            f.style.gridColumn = pos.col;
+            
+            boardContainer.appendChild(f);
+        } else {
+            // PHASE B: Smartes Update (Feld aus dem DOM fischen)
+            f = existingFields[index];
+            
+            // Alten Zustand restlos bereinigen (verhindert Glitches)
+            f.className = 'field'; 
+            f.style.cursor = 'default';
+            f.style.boxShadow = 'none';
+            f.onclick = null;
+        }
+
+        // --- Ab hier: Logik für dynamische Inhalte (Klassen, Klicks, HTML) ---
+
         // Monopoly Glow Check
         if (field.color && field.owner) {
             const ownerIndex = players.findIndex(p => p.id === field.owner);
@@ -587,18 +610,13 @@ function renderBoard(gameState) {
                 }
             }
         }
-        
-        // Grid Position berechnen
-        const pos = getGridPosition(field.id);
-        f.style.gridRow = pos.row;
-        f.style.gridColumn = pos.col;
 
         // Visual feedback for field selection
         const isChoosingWM = gameState.waitingForAction === 'CHOOSE_WM_CITY';
         const isChoosingGentrification = gameState.waitingForAction === 'CHOOSE_GENTRIFICATION_CITY';
         const isChoosingFlight = gameState.waitingForAction === 'CHOOSE_FLIGHT_DESTINATION';
         const isChoosingSell = gameState.waitingForAction === 'MUST_SELL_TO_PAY_RENT';
-        const currentPlayerId = gameState.players[gameState.turn].id;
+        const currentPlayerId = gameState.players[gameState.turn]?.id;
 
         if (isChoosingWM || isChoosingGentrification || isChoosingFlight || isChoosingSell) {
             let selectable = false;
@@ -618,7 +636,6 @@ function renderBoard(gameState) {
         }
 
         // Klick-Logik für interaktive Karten
-        f.style.cursor = 'default';
         if (gameState.waitingForAction === 'CHOOSE_WM_CITY') {
             if (field.owner === socket.id) {
                 f.style.cursor = 'pointer';
@@ -645,13 +662,7 @@ function renderBoard(gameState) {
             }
         }
 
-        // Alle Felder sollen zum Spieler schauen (Rotation = 0)
-        let rotation = 0;
-
-        let colorBar = '';
-        if (field.color) {
-            colorBar = `<div class="color-bar" style="background-color: ${field.color}"></div>`;
-        }
+        let colorBar = field.color ? `<div class="color-bar" style="background-color: ${field.color}"></div>` : '';
 
         let iconHTML = '';
         if (field.type === 'GO') iconHTML = '<div class="custom-icon icon-go"></div>';
@@ -667,45 +678,25 @@ function renderBoard(gameState) {
         let ownerIndicator = '';
         if (field.owner) {
             const ownerIndex = players.findIndex(p => p.id === field.owner);
-            if (ownerIndex !== -1) {
-                ownerIndicator = `<div class="owner-indicator token-p${ownerIndex + 1}"></div>`;
-            }
+            if (ownerIndex !== -1) ownerIndicator = `<div class="owner-indicator token-p${ownerIndex + 1}"></div>`;
         }
 
-        /*let houseIndicator = '';
-        if (field.houses > 0) {
-            const icon = field.houses === 3 ? '🏨' : '🏠'.repeat(field.houses);
-            houseIndicator = `<div class="house-indicator">${icon}</div>`;
-        }*/
         let houseIndicator = '';
         if (field.specialEffect === 'WM') {
             houseIndicator = `<div class="build-container"><div class="isometric-stadium"></div></div>`;
         } else if (field.houses > 0) {
-            // Finde heraus, wem das Feld gehört, um die Farb-Nummer zu ermitteln
             const ownerIndex = players.findIndex(p => p.id === field.owner);
             const playerNum = ownerIndex !== -1 ? ownerIndex + 1 : 1;
-
             houseIndicator = `<div class="build-container">`;
             
-            // Hotel-Bedingung (Im Backend: 3 Häuser = Hotel)
             if (field.houses >= 3) {
                 houseIndicator += `<div class="isometric-hotel hotel-p${playerNum}"></div>`;
             } else {
-                // Operation: Mathematische Aufteilung in Doppel- und Einzelhäuser
-                const doubleHouses = Math.floor(field.houses / 2); // Gibt an, wie oft die 2 ganz in die Zahl passt
-                const singleHouses = field.houses % 2; // Modulo gibt den Restwert (0 oder 1)
-
-                // 1. Zeichne zuerst die großen Doppelhäuser
-                for (let i = 0; i < doubleHouses; i++) {
-                    houseIndicator += `<div class="isometric-houseDouble houseDouble-p${playerNum}"></div>`;
-                }
-                
-                // 2. Zeichne danach das verbleibende Einzelhaus (falls vorhanden)
-                for (let i = 0; i < singleHouses; i++) {
-                    houseIndicator += `<div class="isometric-house house-p${playerNum}"></div>`;
-                }
+                const doubleHouses = Math.floor(field.houses / 2);
+                const singleHouses = field.houses % 2; 
+                for (let i = 0; i < doubleHouses; i++) houseIndicator += `<div class="isometric-houseDouble houseDouble-p${playerNum}"></div>`;
+                for (let i = 0; i < singleHouses; i++) houseIndicator += `<div class="isometric-house house-p${playerNum}"></div>`;
             }
-            
             houseIndicator += `</div>`;
         }
 
@@ -715,23 +706,15 @@ function renderBoard(gameState) {
                 const sellPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * 0.75);
                 priceOrRentHTML = `<div class="field-sell">VERKAUF: ${sellPrice}€</div>`;
             } else if (field.owner) {
-                // Miete berechnen (Logik analog zum Server)
                 let currentRent = field.rent || Math.floor(field.price * 0.1);
                 if (field.houses === 1) currentRent *= 2;
                 if (field.houses === 2) currentRent *= 3;
-                if (field.houses >= 3) currentRent *= 5; // Hotel (3 Häuser im Backend = Hotel)
+                if (field.houses >= 3) currentRent *= 5; 
                 
-                // Monopoly Bonus (7.5%)
                 const sameColorFields = gameState.board.filter(b => b.color === field.color && b.color !== "#ccc");
                 const isMonopoly = sameColorFields.length > 0 && sameColorFields.every(b => b.owner === field.owner);
-                if (field.type === 'PROPERTY' && isMonopoly) {
-                    currentRent = Math.floor(currentRent * 1.075);
-                }
-
-                // WM Bonus
-                if (field.specialEffect === 'WM') {
-                    currentRent *= 3;
-                }
+                if (field.type === 'PROPERTY' && isMonopoly) currentRent = Math.floor(currentRent * 1.075);
+                if (field.specialEffect === 'WM') currentRent *= 3;
                 
                 priceOrRentHTML = `<div class="field-rent">${currentRent}€</div>`;
             } else {
@@ -739,8 +722,9 @@ function renderBoard(gameState) {
             }
         }
 
+        // InnerHTML wird jetzt nur noch überschrieben, nicht das Element gelöscht
         f.innerHTML = `
-            <div class="field-content" style="transform: rotate(${rotation}deg)">
+            <div class="field-content" style="transform: rotate(0deg)">
                 ${colorBar}
                 ${ownerIndicator}
                 ${houseIndicator}
@@ -750,21 +734,18 @@ function renderBoard(gameState) {
             </div>
         `;
 
-        // Spieler-Tokens auf diesem Feld rendern
-        players.forEach((player, index) => {
+        // 2. OPERATION: Token rendern (die alten Token werden durch f.innerHTML = ... oben automatisch gelöscht)
+        players.forEach((player, pIndex) => {
             if (player.position === field.id) {
                 const token = document.createElement('div');
-                token.className = `player-token token-p${index + 1}`;
-                if (index === turn) token.classList.add('active');
+                token.className = `player-token token-p${pIndex + 1}`;
+                if (pIndex === turn) token.classList.add('active');
                 
-                // Versatz für mehrere Spieler auf einem Feld
-                token.style.bottom = `${5 + (index * 5)}px`;
-                token.style.right = `${5 + (index * 5)}px`;
+                token.style.bottom = `${5 + (pIndex * 5)}px`;
+                token.style.right = `${5 + (pIndex * 5)}px`;
                 f.appendChild(token);
             }
         });
-
-        boardContainer.appendChild(f);
     });
 }
 
