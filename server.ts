@@ -100,8 +100,20 @@ function handleRoll(player) {
   gameState.lastRoll = [d1, d2];
   const total = d1 + d2;
   
-  // Vibe-Coin Preis-Schwankung nach jedem Wurf (-20% bis +30%)
-  const changePercent = (Math.random() * 0.5) - 0.2; // -0.2 bis +0.3
+  // Vibe-Coin Preis-Schwankung nach jedem Wurf
+  const r = Math.random();
+  let changePercent = 0;
+  if (r < 0.7) {
+    // 70% Wahrscheinlichkeit: -2% bis +2%
+    changePercent = (Math.random() * 0.04) - 0.02;
+  } else if (r < 0.95) {
+    // 25% Wahrscheinlichkeit: -5% bis +5%
+    changePercent = (Math.random() * 0.1) - 0.05;
+  } else {
+    // 5% Wahrscheinlichkeit: -10% bis +10%
+    changePercent = (Math.random() * 0.2) - 0.1;
+  }
+
   const oldPrice = gameState.vibeCoinPrice;
   gameState.vibeCoinPrice = Math.max(10, Math.floor(gameState.vibeCoinPrice * (1 + changePercent)));
   gameState.priceHistory.push(gameState.vibeCoinPrice);
@@ -427,7 +439,6 @@ function drawChanceCard(player) {
 
   switch(card.id) {
     case 'WM':
-      gameState.lastDrawnCard = null; // Clear card display
       // WM Effekt vom alten Feld entfernen
       if (gameState.wmCityId !== null) {
         gameState.board[gameState.wmCityId].specialEffect = null;
@@ -440,7 +451,6 @@ function drawChanceCard(player) {
       }
       break;
     case 'INFLUENCER':
-      gameState.lastDrawnCard = null; // Clear card display
       const targets = [8, 18, 32]; // Tokyo, Wien, Sydney
       let nextPos = (player.position + 1) % 40;
       while (!targets.includes(nextPos)) {
@@ -454,7 +464,6 @@ function drawChanceCard(player) {
       handleLanding(player, true); // true = Influencer Move (doppelte Miete)
       break;
     case 'GENTRIFICATION':
-      gameState.lastDrawnCard = null; // Clear card display
       if (player.properties.filter(id => gameState.board[id].type === 'PROPERTY' && gameState.board[id].houses < 3).length > 0) {
         gameState.waitingForAction = 'CHOOSE_GENTRIFICATION_CITY';
       } else {
@@ -513,7 +522,6 @@ function drawCommunityChestCard(player) {
       gameState.waitingForAction = 'END_TURN';
       break;
     case 'FLIGHT':
-      gameState.lastDrawnCard = null; // Clear card display
       gameState.waitingForAction = 'CHOOSE_FLIGHT_DESTINATION';
       break;
   }
