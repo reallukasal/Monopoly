@@ -33,7 +33,13 @@ const gameState = {
   rentOwed: 0,
   rentRecipientId: null,
   vibeCoinPrice: 120,
-  priceHistory: [120]
+  priceHistory: [120],
+  vibeCoinTrend: 0, // Markttrend (-5 bis +5)
+  vibeCoinBonus: 0, // Temporärer Bonus durch Events
+  totalTurns: 0,    // Gesamtzahl der Züge für Frequenz-Checks
+  globalRentMultiplier: 1.0, // Steigt über Zeit
+  maxRounds: 50,    // Maximale Runden bis zum Ende
+  currentRound: 1   // Aktuelle Runde
 };
 
 // Initialisierung des Spielfelds (Beispielhaft für Schritt 1)
@@ -101,25 +107,74 @@ function handleRoll(player) {
   const total = d1 + d2;
   
   // Vibe-Coin Preis-Schwankung nach jedem Wurf
-  const r = Math.random();
-  let changePercent = (Math.random() * 0.5) - 0.25;
-  if (r < 0.7) {
-    // 70% Wahrscheinlichkeit: -2% bis +2%
-    changePercent = (Math.random() * 0.04) - 0.02;
-  } else if (r < 0.95) {
-    // 25% Wahrscheinlichkeit: -5% bis +5%
-    changePercent = (Math.random() * 0.1) - 0.05;
-  } else {
-    // 5% Wahrscheinlichkeit: -10% bis +10%
-    changePercent = (Math.random() * 0.2) - 0.1;
+  const oldPrice = gameState.vibeCoinPrice;
+  gameState.totalTurns++;
+
+  // Sudden Death Trigger (ca. Runde 40 bei 4 Spielern)
+  if (gameState.totalTurns === 160) {
+    gameState.globalRentMultiplier = 2.0;
+    io.emit('gameLog', `🔥 SUDDEN DEATH! Die Mieten wurden dauerhaft verdoppelt!`);
   }
 
-  const oldPrice = gameState.vibeCoinPrice;
-  gameState.vibeCoinPrice = Math.max(10, Math.floor(gameState.vibeCoinPrice * (1 + changePercent)));
+  // Aktuelle Runde berechnen (grob)
+  gameState.currentRound = Math.floor(gameState.totalTurns / gameState.players.length) + 1;
+  if (gameState.currentRound > gameState.maxRounds) {
+    endGameByNetWorth();
+    return;
+  }
+  
+  // 1. Basis-Schwankung (Zufall)
+  let changePercent = (Math.random() * 0.1) - 0.05; // -5% bis +5%
+  
+  // 2. Markttrend (Drift)
+  gameState.vibeCoinTrend += (Math.random() * 0.4) - 0.2; // Trend ändert sich langsam
+  gameState.vibeCoinTrend = Math.max(-5, Math.min(5, gameState.vibeCoinTrend));
+  changePercent += gameState.vibeCoinTrend / 100;
+
+  // 3. Hype-Städte Check (Tokyo: 8, Madrid: 23, New York: 37)
+  // Nur jeden 3. Zug aktiv, um den Boost zu dämpfen
+  const hypeCities = [8, 23, 37];
+  let hypeBonus = 0;
+  if (gameState.totalTurns % 3 === 0) {
+    hypeCities.forEach(id => {
+      if (gameState.board[id].owner !== null) {
+        hypeBonus += 0.008; // +0.8% pro besetzter Hype-Stadt
+      }
+    });
+  }
+  changePercent += hypeBonus;
+
+  // 4. Temporärer Event-Bonus (Influencer, Bubble etc.)
+  // Der Bonus wird nun schneller abgebaut (Decay 0.5 statt 0.85)
+  // und sein Einfluss auf die tägliche Schwankung wird gedeckelt.
+  const cappedBonus = Math.max(-10, Math.min(10, gameState.vibeCoinBonus));
+  changePercent += cappedBonus / 100;
+  gameState.vibeCoinBonus *= 0.5; // Schnellerer Abbau
+
+  // 5. Mean Reversion (Verhindert "Stuck at Bottom" und extreme Blasen)
+  if (gameState.vibeCoinPrice < 50) {
+    changePercent += 0.15; // Noch stärkerer Aufwärtsdruck bei < 50€
+  } else if (gameState.vibeCoinPrice < 100) {
+    changePercent += 0.05; // Aufwärtsdruck bei < 100€
+  } else if (gameState.vibeCoinPrice > 450) {
+    changePercent -= 0.15; // Starker Korrekturdruck bei > 450€
+  } else if (gameState.vibeCoinPrice > 300) {
+    changePercent -= 0.05; // Korrekturdruck bei > 300€
+  }
+
+  // Preis berechnen (Minimum 20€ statt 10€)
+  gameState.vibeCoinPrice = Math.max(20, Math.floor(gameState.vibeCoinPrice * (1 + changePercent)));
   gameState.priceHistory.push(gameState.vibeCoinPrice);
   if (gameState.priceHistory.length > 20) gameState.priceHistory.shift();
   
-  io.emit('gameLog', `📈 Vibe-Coin Kurs-Update: ${oldPrice}€ ➔ ${gameState.vibeCoinPrice}€ (${(changePercent * 100).toFixed(1)}%)`);
+  const trendIcon = gameState.vibeCoinPrice > oldPrice ? '📈' : '📉';
+  io.emit('gameLog', `${trendIcon} Vibe-Coin Kurs-Update: ${oldPrice}€ ➔ ${gameState.vibeCoinPrice}€ (${(changePercent * 100).toFixed(1)}%)`);
+  if (hypeBonus > 0) {
+    io.emit('gameLog', `✨ Hype-Städte Bonus aktiv: +${(hypeBonus * 100).toFixed(1)}%`);
+  }
+  if (Math.abs(gameState.vibeCoinBonus) > 0.5) {
+    io.emit('gameLog', `🔥 Event-Nachwirkungen beeinflussen den Kurs: ${(gameState.vibeCoinBonus > 0 ? '+' : '')}${(gameState.vibeCoinBonus).toFixed(1)}%`);
+  }
 
   const oldPos = player.position;
   player.position = (player.position + total) % 40;
@@ -152,10 +207,33 @@ function processAI(player) {
   const field = gameState.board[player.position];
 
   if (gameState.waitingForAction === 'END_TURN') {
+    // KI versucht vor dem Beenden noch zu bauen, wenn sie Geld hat
+    const buildable = player.properties.filter(id => gameState.board[id].type === 'PROPERTY' && gameState.board[id].houses < 3);
+    if (buildable.length > 0) {
+      const f = gameState.board[buildable[0]];
+      if (player.money >= f.housePrice + 100) {
+        player.money -= f.housePrice;
+        f.houses++;
+        io.emit('gameLog', `${player.name} (KI) baut strategisch auf ${f.name}`);
+      }
+    }
     nextTurn();
   } else if (gameState.waitingForAction === 'BUY_OR_PASS') {
-    // KI kauft, wenn sie danach noch 200€ Puffer hat
-    if (player.money >= field.price + 200) {
+    // KI kauft, wenn sie danach noch 100€ Puffer hat (aggressiver)
+    // Wenn nicht genug Cash, aber Coins da sind: Coins verkaufen!
+    if (player.money < field.price + 100 && player.coins > 0) {
+      const needed = (field.price + 100) - player.money;
+      const coinsToSell = Math.ceil(needed / gameState.vibeCoinPrice);
+      const actualSell = Math.min(player.coins, coinsToSell);
+      if (actualSell > 0) {
+        const gain = actualSell * gameState.vibeCoinPrice;
+        player.money += gain;
+        player.coins -= actualSell;
+        io.emit('gameLog', `${player.name} (KI) verkauft ${actualSell} Coins, um ${field.name} kaufen zu können.`);
+      }
+    }
+
+    if (player.money >= field.price + 100) {
       player.money -= field.price;
       field.owner = player.id;
       player.properties.push(field.id);
@@ -165,21 +243,32 @@ function processAI(player) {
       if (!gameState.gameStarted) return;
 
       // Nach Kauf: Prüfen ob Hausbau möglich
-      if (field.type === 'PROPERTY' && player.money >= field.housePrice + 200) {
+      if (field.type === 'PROPERTY' && player.money >= field.housePrice + 100) {
         field.houses = 1;
         player.money -= field.housePrice;
-        io.emit('gameLog', `${player.name} (KI) baut ein Haus auf ${field.name}`);
+        io.emit('gameLog', `${player.name} (KI) baut sofort ein Haus auf ${field.name}`);
       }
     }
     nextTurn();
   } else if (gameState.waitingForAction === 'BUYOUT_OR_PASS') {
-    let buyoutMultiplier = 1.5;
+    let buyoutMultiplier = 1.4; // Günstigeres Abkaufen
     if (field.type === 'PROPERTY' && hasMonopoly(field.owner, field.color)) {
-      buyoutMultiplier = 1.5 * 1.15;
+      buyoutMultiplier = 1.4 * 1.1;
     }
     const buyoutPrice = Math.floor((field.price + (field.houses || 0) * (field.housePrice || 0)) * buyoutMultiplier);
-    // KI kauft ab, wenn sie danach noch 300€ Puffer hat (etwas vorsichtiger beim Abkaufen)
-    if (player.money >= buyoutPrice + 300) {
+    
+    // KI verkauft Coins für Buyout
+    if (player.money < buyoutPrice + 150 && player.coins > 0) {
+      const needed = (buyoutPrice + 150) - player.money;
+      const coinsToSell = Math.ceil(needed / gameState.vibeCoinPrice);
+      const actualSell = Math.min(player.coins, coinsToSell);
+      if (actualSell > 0) {
+        player.money += actualSell * gameState.vibeCoinPrice;
+        player.coins -= actualSell;
+      }
+    }
+
+    if (player.money >= buyoutPrice + 150) {
       const oldOwner = gameState.players.find(p => p.id === field.owner);
       player.money -= buyoutPrice;
       if (oldOwner) {
@@ -192,7 +281,7 @@ function processAI(player) {
     }
     nextTurn();
   } else if (gameState.waitingForAction === 'BUILD_OR_END') {
-    if (field.type === 'PROPERTY' && field.houses < 3 && player.money >= field.housePrice + 200) {
+    if (field.type === 'PROPERTY' && field.houses < 3 && player.money >= field.housePrice + 100) {
       player.money -= field.housePrice;
       field.houses++;
       const type = field.houses === 3 ? 'ein Hotel' : `Haus Nr. ${field.houses}`;
@@ -269,12 +358,96 @@ function checkWinCondition(player) {
   const stationIndices = [5, 15, 25, 35];
   const ownedStations = stationIndices.filter(index => gameState.board[index].owner === player.id);
   
+  // 1. Alle 4 Bahnhöfe
   if (ownedStations.length === 4) {
-    io.emit('gameLog', `🏆 BAHNHOF-MONOPOLY! ${player.name} besitzt alle 4 Bahnhöfe und gewinnt das Spiel!`);
-    gameState.gameStarted = false;
-    gameState.waitingForAction = 'GAME_OVER';
-    io.emit('gameStateUpdate', gameState);
+    announceWin(player, "BAHNHOF-MONOPOLY! Besitzt alle 4 Bahnhöfe.");
+    return;
   }
+
+  // 2. Alle Straßen einer Seite
+  const side1 = [1, 3, 6, 8, 9]; // Braun + Hellblau
+  const side2 = [11, 13, 14, 16, 18, 19]; // Pink + Orange
+  const side3 = [21, 23, 24, 26, 27, 29]; // Rot + Gelb
+  const side4 = [31, 32, 34, 37, 39]; // Grün + Dunkelblau
+
+  if (side1.every(id => gameState.board[id].owner === player.id)) {
+    announceWin(player, "SIDE-MONOPOLY (Seite 1)! Besitzt alle Straßen von Buenos Aires bis Seoul.");
+    return;
+  }
+  if (side2.every(id => gameState.board[id].owner === player.id)) {
+    announceWin(player, "SIDE-MONOPOLY (Seite 2)! Besitzt alle Straßen von Rom bis Prag.");
+    return;
+  }
+  if (side3.every(id => gameState.board[id].owner === player.id)) {
+    announceWin(player, "SIDE-MONOPOLY (Seite 3)! Besitzt alle Straßen von Amsterdam bis Dubai.");
+    return;
+  }
+  if (side4.every(id => gameState.board[id].owner === player.id)) {
+    announceWin(player, "SIDE-MONOPOLY (Seite 4)! Besitzt alle Straßen von London bis San Francisco.");
+    return;
+  }
+
+  // 3. Top 5 World Hype (Pink + Dunkelblau)
+  const hypeWorld = [11, 13, 14, 37, 39]; // Rom, Paris, Venedig, NY, SF
+  if (hypeWorld.every(id => gameState.board[id].owner === player.id)) {
+    announceWin(player, "WORLD HYPE MONOPOLY! Besitzt die Top 5 Hype-Städte der Welt.");
+    return;
+  }
+
+  // 4. Klassisches Monopoly: 3 komplette Farbgruppen (Monopole)
+  const colors = ["#955436", "#aae0fa", "#d93a96", "#f7941d", "#ed1c24", "#fef200", "#1fb25a", "#0072bb"];
+  let monopolyCount = 0;
+  colors.forEach(color => {
+    if (hasMonopoly(player.id, color)) monopolyCount++;
+  });
+
+  if (monopolyCount >= 3) {
+    announceWin(player, `MONOPOLY-KÖNIG! Besitzt ${monopolyCount} komplette Farbgruppen.`);
+    return;
+  }
+
+  // 5. Net Worth Tycoon: 10.000€ Gesamtwert (Cash + Grundstücke + Häuser + Coins)
+  let netWorth = player.money + (player.coins * gameState.vibeCoinPrice);
+  player.properties.forEach(id => {
+    const f = gameState.board[id];
+    netWorth += f.price + (f.houses || 0) * (f.housePrice || 0);
+  });
+
+  if (netWorth >= 10000) {
+    announceWin(player, `NET WORTH TYCOON! Gesamtwert von ${netWorth}€ erreicht.`);
+    return;
+  }
+}
+
+function endGameByNetWorth() {
+  io.emit('gameLog', `⌛ ZEITABLAUF! Die maximale Rundenzahl wurde erreicht.`);
+  
+  let winner = null;
+  let maxNetWorth = -1;
+
+  gameState.players.forEach(player => {
+    let netWorth = player.money + (player.coins * gameState.vibeCoinPrice);
+    player.properties.forEach(id => {
+      const f = gameState.board[id];
+      netWorth += f.price + (f.houses || 0) * (f.housePrice || 0);
+    });
+
+    if (netWorth > maxNetWorth) {
+      maxNetWorth = netWorth;
+      winner = player;
+    }
+  });
+
+  if (winner) {
+    announceWin(winner, `REICHSTER SPIELER! Gesamtwert von ${maxNetWorth}€ am Ende der Zeit.`);
+  }
+}
+
+function announceWin(player, reason) {
+  io.emit('gameLog', `🏆 SPIELENDE! ${player.name} gewinnt! Grund: ${reason}`);
+  gameState.gameStarted = false;
+  gameState.waitingForAction = 'GAME_OVER';
+  io.emit('gameStateUpdate', gameState);
 }
 
 function hasMonopoly(playerId, color) {
@@ -329,7 +502,10 @@ function handleLanding(player, isInfluencerMove = false) {
       if (owner) {
         let rent = field.rent || Math.floor(field.price * 0.1);
         
-        // Miete erhöhen durch Häuser
+        // Globaler Multiplikator (Sudden Death)
+        rent = Math.floor(rent * gameState.globalRentMultiplier);
+
+        // Miete erhöhen durch Häuser (Normalwerte)
         if (field.houses === 1) rent *= 2;
         if (field.houses === 2) rent *= 3;
         if (field.houses === 3) rent *= 5; // Hotel
@@ -451,6 +627,11 @@ function drawChanceCard(player) {
       }
       break;
     case 'INFLUENCER':
+      // Sofortiger Effekt auf den Preis
+      const influencerImpact = 0.15;
+      gameState.vibeCoinPrice = Math.floor(gameState.vibeCoinPrice * (1 + influencerImpact));
+      gameState.vibeCoinBonus += 5; // Kleinerer Nachwirkungs-Trend
+      io.emit('gameLog', `🚀 Vibe-Coin Hype durch Influencer! Sofort-Anstieg: +15%`);
       const targets = [8, 18, 32]; // Tokyo, Wien, Sydney
       let nextPos = (player.position + 1) % 40;
       while (!targets.includes(nextPos)) {
@@ -472,6 +653,11 @@ function drawChanceCard(player) {
       }
       break;
     case 'BUBBLE':
+      // Sofortiger Effekt auf den Preis
+      const bubbleImpact = -0.20;
+      gameState.vibeCoinPrice = Math.max(20, Math.floor(gameState.vibeCoinPrice * (1 + bubbleImpact)));
+      gameState.vibeCoinBonus -= 5; // Kleinerer Nachwirkungs-Trend
+      io.emit('gameLog', `📉 Marktpanik! Immobilienblase drückt Vibe-Coin: -20%`);
       let totalCost = 0;
       player.properties.forEach(id => {
         const f = gameState.board[id];
@@ -559,31 +745,48 @@ function checkAITurn() {
 io.on('connection', (socket) => {
   console.log(`Neuer Spieler verbunden: ${socket.id}`);
 
-  if (gameState.gameStarted || gameState.players.length >= 4) {
-    socket.emit('error_message', 'Spiel ist bereits voll oder läuft.');
-    return;
-  }
-
-  const newPlayer = {
-    id: socket.id,
-    name: `Spieler ${gameState.players.length + 1}`,
-    position: 0,
-    money: 1500,
-    coins: 0,
-    properties: [],
-    inJail: false
-  };
-  gameState.players.push(newPlayer);
-  io.emit('gameStateUpdate', gameState);
-
-  if (gameState.players.length === 4) {
-    gameState.board = initBoard(); // Reset board for new game
-    gameState.gameStarted = true;
-    gameState.waitingForAction = 'ROLL_DICE';
-    io.emit('gameStarted', gameState);
+  // Wir fügen den Spieler nur hinzu, wenn noch Platz ist und das Spiel nicht läuft
+  if (!gameState.gameStarted && gameState.players.length < 4) {
+    const newPlayer = {
+      id: socket.id,
+      name: `Spieler ${gameState.players.length + 1}`,
+      position: 0,
+      money: 1500,
+      coins: 0,
+      totalSpent: 0, // Für Durchschnittspreis-Berechnung
+      properties: [],
+      inJail: false
+    };
+    gameState.players.push(newPlayer);
     io.emit('gameStateUpdate', gameState);
-    checkAITurn();
+
+    if (gameState.players.length === 4) {
+      gameState.board = initBoard(); // Reset board for new game
+      gameState.gameStarted = true;
+      gameState.waitingForAction = 'ROLL_DICE';
+      io.emit('gameStarted', gameState);
+      io.emit('gameStateUpdate', gameState);
+      checkAITurn();
+    }
+  } else if (gameState.gameStarted) {
+    // Wenn das Spiel läuft, prüfen wir, ob es einen "Auto-Play" Bot gibt, den der Spieler übernehmen kann
+    const aiPlayer = gameState.players.find(p => p.isAI);
+    if (aiPlayer) {
+      const oldName = aiPlayer.name.replace(" (Auto-Play)", "");
+      aiPlayer.id = socket.id;
+      aiPlayer.isAI = false;
+      aiPlayer.name = oldName;
+      io.emit('gameLog', `🔄 ${aiPlayer.name} ist wieder da und übernimmt seinen Platz!`);
+      io.emit('gameStateUpdate', gameState);
+    } else {
+      socket.emit('error_message', 'Spiel ist bereits voll und alle Plätze sind belegt.');
+    }
+  } else {
+    socket.emit('error_message', 'Lobby ist voll.');
   }
+
+  // Wir senden den aktuellen State an den neuen Socket, auch wenn er nur Zuschauer ist
+  socket.emit('gameStateUpdate', gameState);
 
   socket.on('fillWithAI', () => {
     if (gameState.gameStarted) return;
@@ -596,6 +799,7 @@ io.on('connection', (socket) => {
         position: 0,
         money: 1500,
         coins: 0,
+        totalSpent: 0,
         properties: [],
         inJail: false,
         isAI: true
@@ -617,6 +821,7 @@ io.on('connection', (socket) => {
     if (player.money >= cost) {
       player.money -= cost;
       player.coins += amount;
+      player.totalSpent += cost;
       io.emit('gameLog', `${player.name} kauft ${amount} Vibe-Coins für ${cost}€`);
       io.emit('gameStateUpdate', gameState);
     }
@@ -629,6 +834,12 @@ io.on('connection', (socket) => {
     
     if (player.coins >= amount) {
       const revenue = amount * gameState.vibeCoinPrice;
+      
+      // Durchschnittspreis-Anpassung beim Verkauf (FIFO-ähnlich oder einfach anteilig)
+      const avgPrice = player.coins > 0 ? player.totalSpent / player.coins : 0;
+      player.totalSpent -= avgPrice * amount;
+      if (player.totalSpent < 0) player.totalSpent = 0;
+
       player.money += revenue;
       player.coins -= amount;
       io.emit('gameLog', `${player.name} verkauft ${amount} Vibe-Coins für ${revenue}€`);
@@ -854,6 +1065,9 @@ io.on('connection', (socket) => {
     gameState.rentRecipientId = null;
     gameState.vibeCoinPrice = 120;
     gameState.priceHistory = [120];
+    gameState.totalTurns = 0;
+    gameState.globalRentMultiplier = 1.0;
+    gameState.currentRound = 1;
     
     io.emit('gameStateUpdate', gameState);
     io.emit('gameLog', 'Das Spiel wurde zurückgesetzt.');

@@ -16,6 +16,7 @@ const lobbyControls = document.getElementById('lobby-controls');
 const fillAIButton = document.getElementById('fill-ai');
 const resetGameButton = document.getElementById('reset-game');
 const currentTurnDisplay = document.getElementById('current-turn');
+const roundInfoDisplay = document.getElementById('round-info');
 const diceDisplay = document.getElementById('dice-display');
 
 const rollDiceButton = document.getElementById('roll-dice');
@@ -36,6 +37,8 @@ const cryptoBtnPrice = document.getElementById('crypto-btn-price');
 const cryptoCurrentPrice = document.getElementById('crypto-current-price');
 const cryptoUserCoins = document.getElementById('crypto-user-coins');
 const cryptoUserCash = document.getElementById('crypto-user-cash');
+const cryptoAvgPrice = document.getElementById('crypto-avg-price');
+const cryptoProfitPercent = document.getElementById('crypto-profit-percent');
 const cryptoAmountInput = document.getElementById('crypto-amount-input');
 const cryptoAmountMinus = document.getElementById('crypto-amount-minus');
 const cryptoAmountPlus = document.getElementById('crypto-amount-plus');
@@ -166,6 +169,20 @@ function updateCryptoUI() {
     
     cryptoUserCoins.innerText = `Deine Coins: ${player.coins || 0}`;
     cryptoUserCash.innerText = `Dein Cash: ${player.money}€`;
+    
+    // Broker Details
+    const avgPrice = player.coins > 0 ? Math.floor(player.totalSpent / player.coins) : 0;
+    cryptoAvgPrice.innerText = `${avgPrice}€`;
+    
+    if (player.coins > 0) {
+        const profit = gs.vibeCoinPrice - avgPrice;
+        const profitPercent = ((profit / avgPrice) * 100).toFixed(1);
+        cryptoProfitPercent.innerText = `${profit >= 0 ? '+' : ''}${profitPercent}%`;
+        cryptoProfitPercent.className = `broker-percent ${profit > 0 ? 'profit-up' : (profit < 0 ? 'profit-down' : 'profit-neutral')}`;
+    } else {
+        cryptoProfitPercent.innerText = '0%';
+        cryptoProfitPercent.className = 'broker-percent profit-neutral';
+    }
     
     renderCryptoChart(gs.priceHistory);
 }
@@ -464,6 +481,16 @@ function updateStatusBar(gameState) {
     currentTurnDisplay.innerText = gameState.waitingForAction === 'GAME_OVER' ? '🏆 SPIEL VORBEI!' : `${currentPlayer.name} ${actionText}`;
     currentTurnDisplay.style.color = (isMyTurn || gameState.waitingForAction === 'GAME_OVER') ? '#4ade80' : 'white';
 
+    // Round Info
+    if (roundInfoDisplay) {
+        const roundText = `Runde ${gameState.currentRound}/${gameState.maxRounds} • Miete x${gameState.globalRentMultiplier.toFixed(1)}`;
+        roundInfoDisplay.innerText = roundText;
+        if (gameState.totalTurns >= 160) {
+            roundInfoDisplay.style.color = '#ef4444';
+            roundInfoDisplay.style.fontWeight = '900';
+        }
+    }
+
     // Würfel-Display Logik
     const r = gameState.lastRoll;
     const isNewRoll = r[0] !== lastRollSeen[0] || r[1] !== lastRollSeen[1];
@@ -517,11 +544,17 @@ function updateStatusBar(gameState) {
             previousMoney[player.id] = player.money;
 
             const portfolioValue = (player.coins || 0) * (gameState.vibeCoinPrice || 0);
+            const avgPrice = player.coins > 0 ? player.totalSpent / player.coins : 0;
+            const profit = player.coins > 0 ? (gameState.vibeCoinPrice - avgPrice) : 0;
+            const profitClass = profit > 0 ? 'profit-up' : (profit < 0 ? 'profit-down' : 'profit-neutral');
+
+            const profitIcon = profit > 0 ? '▲' : (profit < 0 ? '▼' : '');
+
             cornerEl.innerHTML = `
                 <div class="player-name">${player.name}</div>
                 <div class="player-money ${moneyClass}">
                     <span style="opacity: 0.7; font-size: 0.8rem;">€</span>${player.money}
-                    ${portfolioValue > 0 ? `<span class="player-coins-small">🪙${portfolioValue}€</span>` : ''}
+                    ${portfolioValue > 0 ? `<span class="player-coins-small ${profitClass}">${profitIcon} 🪙${portfolioValue}€</span>` : ''}
                 </div>
                 <div class="player-props">
                     ${gameState.board.filter(f => f.owner === player.id).map(f => `<div style="width: 8px; height: 8px; background: ${f.color || '#94a3b8'}; border-radius: 2px;"></div>`).join('')}

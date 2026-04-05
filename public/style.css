@@ -1236,6 +1236,110 @@ button:disabled {
     color: #94a3b8;
     margin-left: 8px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.profit-up {
+    color: #22c55e !important;
+    text-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.profit-down {
+    color: #ef4444 !important;
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+.profit-neutral {
+    color: #94a3b8 !important;
+}
+
+.broker-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.broker-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.broker-label {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.broker-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: white;
+}
+
+.broker-percent {
+    font-size: 0.8rem;
+    font-weight: 900;
+    margin-top: 2px;
+}
+
+.crypto-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.crypto-btn {
+    padding: 12px;
+    border-radius: 0.75rem;
+    border: none;
+    font-weight: 900;
+    font-family: 'Anton', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.crypto-btn-buy {
+    background: #22c55e;
+    color: white;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.crypto-btn-buy:hover {
+    background: #16a34a;
+    transform: translateY(-2px);
+}
+
+.crypto-btn-sell {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.crypto-btn-sell:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+}
+
+.crypto-btn:disabled {
+    background: #475569;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
 }
 
 /* Crypto Menu */

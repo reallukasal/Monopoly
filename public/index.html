@@ -28,6 +28,7 @@
                         <div class="corner corner-br" id="player-br"></div>
                     </div>
                     <div id="center-info">
+                        <div id="round-info" style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Runde 1/50 • Miete x1.0</div>
                         <div id="current-turn">Warte auf Start...</div>
                         <div id="dice-display">🎲 0, 0</div>
                     </div>
@@ -102,6 +103,16 @@
                                 <div id="crypto-user-coins">Deine Coins: 0</div>
                                 <div id="crypto-user-cash">Dein Cash: 0€</div>
                             </div>
+                            <div class="broker-details">
+                                <div class="broker-card">
+                                    <span class="broker-label">Einkaufspreis</span>
+                                    <span id="crypto-avg-price" class="broker-value">0€</span>
+                                </div>
+                                <div class="broker-card">
+                                    <span class="broker-label">Gewinn/Verlust</span>
+                                    <span id="crypto-profit-percent" class="broker-percent profit-neutral">0%</span>
+                                </div>
+                            </div>
                             <div class="crypto-trade-controls">
                                 <div class="amount-selector">
                                     <button id="crypto-amount-minus">-</button>
@@ -109,8 +120,8 @@
                                     <button id="crypto-amount-plus">+</button>
                                 </div>
                                 <div class="trade-actions">
-                                    <button id="crypto-buy-btn" class="confirm">Kaufen</button>
-                                    <button id="crypto-sell-btn" class="sell">Verkaufen</button>
+                                    <button id="crypto-buy-btn" class="crypto-btn crypto-btn-buy">Kaufen</button>
+                                    <button id="crypto-sell-btn" class="crypto-btn crypto-btn-sell">Verkaufen</button>
                                 </div>
                             </div>
                             <button id="crypto-close-btn" class="cancel">Beenden</button>
